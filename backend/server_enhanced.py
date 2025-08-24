@@ -700,9 +700,9 @@ class EnhancedKubernetesService:
             
             # Also invalidate the deployment/daemonset list caches
             if resource_type == 'deployment':
-                await k8s_cache.invalidate_by_pattern('deployments*')
+                await k8s_cache.cache.invalidate_by_pattern('deployments*')
             elif resource_type == 'daemonset':
-                await k8s_cache.invalidate_by_pattern('daemonsets*')
+                await k8s_cache.cache.invalidate_by_pattern('daemonsets*')
             
             # Broadcast real-time update
             await websocket_manager.broadcast({
