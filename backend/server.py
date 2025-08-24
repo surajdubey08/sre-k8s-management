@@ -145,6 +145,16 @@ class DeploymentUpdate(BaseModel):
     replicas: Optional[int] = Field(None, ge=0, le=100)
     environment_variables: Optional[Dict[str, str]] = None
 
+class ResourceConfiguration(BaseModel):
+    configuration: Dict[str, Any] = Field(..., description="Complete resource configuration")
+    
+class ConfigurationUpdate(BaseModel):
+    success: bool
+    message: str
+    applied_changes: Optional[Dict[str, Any]] = None
+    timestamp: str
+    user: str
+
 class OperationResult(BaseModel):
     success: bool
     message: str
