@@ -38,6 +38,17 @@ const Dashboard = memo(() => {
   //   getPerformanceStats
   // } = usePerformance();
 
+  // Fallback implementations to avoid breaking the component
+  const optimizedApiCall = useCallback(async (apiCall, cacheKey, cacheDuration) => {
+    // Simple fallback - just call the API without caching
+    return await apiCall();
+  }, []);
+
+  const debounce = useCallback((func, delay) => {
+    // Simple fallback - just return the function without debouncing
+    return func;
+  }, []);
+
   // Performance monitoring for this component
   // useRenderTiming('Dashboard');
   
