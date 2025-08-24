@@ -16,7 +16,10 @@ const WS_URL = `${BACKEND_URL.replace('http', 'ws')}/ws`;
 axios.defaults.baseURL = API;
 
 // Auth context
-const AuthContext = React.createContext();
+const AuthContext = createContext();
+
+// WebSocket context
+const WebSocketContext = createContext();
 
 export const useAuth = () => {
   const context = React.useContext(AuthContext);
