@@ -41,7 +41,7 @@ const PerformanceDashboard = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, []);
+  }, [getPerformanceStats, getCacheStats]); // Add missing dependencies
 
   const formatUptime = (uptime) => {
     const seconds = Math.floor(uptime / 1000) % 60;
