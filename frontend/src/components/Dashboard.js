@@ -83,11 +83,11 @@ const Dashboard = memo(() => {
     }
   }, [simpleApiCall]);
 
-  // Simple refresh function without debouncing
-  const debouncedRefresh = useCallback(
-    noop(fetchDashboardData),
-    [fetchDashboardData, noop]
-  );
+  // Immediate refresh function for configuration updates
+  const handleConfigurationUpdated = useCallback(() => {
+    console.log('Configuration updated - refreshing data...');
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleScaleDeployment = useCallback(async (namespace, name, replicas) => {
     try {
