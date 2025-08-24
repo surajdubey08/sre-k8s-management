@@ -194,6 +194,15 @@ const EnhancedConfigurationEditor = ({
       const jsonConfig = JSON.stringify(yamlData, null, 2);
       setCurrentConfig(jsonConfig);
       setViewMode('json');
+      
+      // Recalculate changes after conversion
+      try {
+        const originalData = yaml.load(originalConfig);
+        const changed = JSON.stringify(originalData) !== JSON.stringify(yamlData);
+        setHasChanges(changed);
+      } catch (error) {
+        setHasChanges(jsonConfig !== originalConfig);
+      }
     } catch (error) {
       toast.error('Invalid YAML format');
     }
@@ -209,6 +218,15 @@ const EnhancedConfigurationEditor = ({
       });
       setCurrentConfig(yamlConfig);
       setViewMode('yaml');
+      
+      // Recalculate changes after conversion
+      try {
+        const originalData = yaml.load(originalConfig);
+        const changed = JSON.stringify(originalData) !== JSON.stringify(jsonData);
+        setHasChanges(changed);
+      } catch (error) {
+        setHasChanges(yamlConfig !== originalConfig);
+      }
     } catch (error) {
       toast.error('Invalid JSON format');
     }
