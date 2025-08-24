@@ -188,7 +188,6 @@ const WebSocketProvider = ({ children }) => {
     onOpen: handleOpen,
     onClose: handleClose,
     onError: handleError
-    }
   });
 
   const wsValue = {
