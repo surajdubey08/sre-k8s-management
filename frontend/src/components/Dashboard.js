@@ -99,15 +99,24 @@ const Dashboard = memo(() => {
     }
   }, [optimizedApiCall]);
 
-  const handleScaleDeployment = async (namespace, name, replicas) => {
+  // Debounced refresh function to avoid excessive API calls
+  const debouncedRefresh = useCallback(
+    debounce(fetchDashboardData, 1000),
+    [fetchDashboardData, debounce]
+  );
+
+  const handleScaleDeployment = useCallback(async (namespace, name, replicas) => {
     try {
-      await axios.patch(`/deployments/${namespace}/${name}/scale`, { replicas });
+      await optimizedApiCall(
+        () => axios.patch(`/deployments/${namespace}/${name}/scale`, { replicas }),
+        null // Don't cache scale operations
+      );
       toast.success(`Successfully scaled ${name} to ${replicas} replicas`);
-      fetchDashboardData();
+      debouncedRefresh();
     } catch (error) {
       toast.error(`Failed to scale deployment: ${error.response?.data?.detail || error.message}`);
     }
-  };
+  }, [optimizedApiCall, debouncedRefresh]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
