@@ -87,6 +87,7 @@ class KubernetesConfig:
     def load_config(self):
         if not KUBERNETES_AVAILABLE:
             logger.warning("Kubernetes client not available, running in mock mode")
+            self.config_manager = MockConfigurationManager()
             return
             
         try:
@@ -103,6 +104,8 @@ class KubernetesConfig:
             except config.ConfigException as e:
                 logger.error(f"Failed to load Kubernetes configuration: {e}")
                 self.available = False
+                # Initialize mock config manager when K8s is not available
+                self.config_manager = MockConfigurationManager()
                 return
         
         self.configuration = client.Configuration.get_default_copy()
