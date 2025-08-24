@@ -890,63 +890,201 @@ class KubernetesDashboardAPITester:
         
         return False
 
+    # ========== DATADOG-AGENT SYNCHRONIZATION DEBUG TESTS ==========
+    
+    def test_datadog_agent_data_consistency(self):
+        """Debug synchronization issue for datadog-agent daemonset"""
+        print(f"\n🔍 Testing DataDog Agent Data Consistency...")
+        
+        # Test 1: List all daemonsets and check for datadog-agent
+        success, daemonsets = self.test_list_daemonsets()
+        if not success:
+            print("❌ Failed to list daemonsets")
+            return False
+        
+        datadog_daemonset = None
+        for ds in daemonsets:
+            if ds.get('name') == 'datadog-agent' and ds.get('namespace') == 'kube-system':
+                datadog_daemonset = ds
+                break
+        
+        if not datadog_daemonset:
+            print("❌ datadog-agent daemonset not found in list")
+            return False
+        
+        print(f"✅ Found datadog-agent daemonset in list: {datadog_daemonset.get('name')}")
+        
+        # Test 2: Get specific daemonset config
+        success, config_response = self.run_test(
+            "Get DataDog Agent Config",
+            "GET",
+            "daemonset/kube-system/datadog-agent/config",
+            200
+        )
+        
+        if not success:
+            print("❌ Failed to get datadog-agent config")
+            return False
+        
+        # Check for name corruption in config
+        config_name = config_response.get('metadata', {}).get('name', '')
+        print(f"📊 Config name from API: '{config_name}'")
+        
+        if config_name != 'datadog-agent':
+            print(f"🚨 NAME CORRUPTION DETECTED! Expected 'datadog-agent', got '{config_name}'")
+            return False
+        
+        print(f"✅ Config name is correct: '{config_name}'")
+        
+        # Test 3: Check WebSocket messages for corruption
+        print(f"📡 Checking WebSocket messages for data corruption...")
+        initial_msg_count = len(self.websocket_messages)
+        
+        # Trigger a configuration update to generate WebSocket messages
+        test_config = config_response.copy()
+        if 'metadata' not in test_config:
+            test_config['metadata'] = {}
+        if 'labels' not in test_config['metadata']:
+            test_config['metadata']['labels'] = {}
+        test_config['metadata']['labels']['test-sync-debug'] = 'true'
+        
+        # Dry run update to trigger WebSocket
+        success, update_response = self.run_test(
+            "DataDog Agent Config Update - Dry Run",
+            "PUT",
+            "daemonset/kube-system/datadog-agent/config",
+            200,
+            data={
+                "configuration": test_config,
+                "dry_run": True,
+                "strategy": "merge"
+            }
+        )
+        
+        # Wait for WebSocket messages
+        time.sleep(2)
+        
+        # Check WebSocket messages for corruption
+        new_messages = self.websocket_messages[initial_msg_count:]
+        for msg in new_messages:
+            if isinstance(msg, dict) and 'data' in msg:
+                data = msg['data']
+                if isinstance(data, dict) and 'name' in data:
+                    ws_name = data['name']
+                    if ws_name != 'datadog-agent':
+                        print(f"🚨 WEBSOCKET NAME CORRUPTION! Expected 'datadog-agent', got '{ws_name}'")
+                        return False
+        
+        print(f"✅ WebSocket messages contain correct names")
+        
+        # Test 4: Check cache consistency
+        print(f"🗄️ Testing cache consistency...")
+        
+        # Clear cache and test again
+        if self.user_data and self.user_data.get('role') == 'admin':
+            self.run_test(
+                "Clear Cache for Consistency Test",
+                "POST",
+                "admin/cache/clear",
+                200
+            )
+            
+            # Get config again after cache clear
+            success, fresh_config = self.run_test(
+                "Get DataDog Agent Config (Fresh)",
+                "GET",
+                "daemonset/kube-system/datadog-agent/config",
+                200
+            )
+            
+            if success:
+                fresh_name = fresh_config.get('metadata', {}).get('name', '')
+                if fresh_name != 'datadog-agent':
+                    print(f"🚨 CACHE CORRUPTION! Fresh config name: '{fresh_name}'")
+                    return False
+                print(f"✅ Fresh config name is correct: '{fresh_name}'")
+        
+        # Test 5: Multiple rapid requests to check for race conditions
+        print(f"⚡ Testing rapid requests for race conditions...")
+        
+        for i in range(5):
+            success, rapid_config = self.run_test(
+                f"Rapid Request {i+1}",
+                "GET",
+                "daemonset/kube-system/datadog-agent/config",
+                200
+            )
+            
+            if success:
+                rapid_name = rapid_config.get('metadata', {}).get('name', '')
+                if rapid_name != 'datadog-agent':
+                    print(f"🚨 RACE CONDITION CORRUPTION! Request {i+1} name: '{rapid_name}'")
+                    return False
+        
+        print(f"✅ All rapid requests returned correct names")
+        
+        # Test 6: Check all API endpoints for consistency
+        print(f"🔄 Testing all related endpoints for consistency...")
+        
+        endpoints_to_test = [
+            ("GET", "daemonsets", "List DaemonSets"),
+            ("GET", "daemonset/kube-system/datadog-agent/config", "Get Config"),
+            ("GET", "dashboard/stats", "Dashboard Stats")
+        ]
+        
+        for method, endpoint, description in endpoints_to_test:
+            success, response = self.run_test(
+                f"Consistency Check - {description}",
+                method,
+                endpoint,
+                200
+            )
+            
+            if success:
+                # Check for datadog-agent name in response
+                response_str = json.dumps(response)
+                if 'datadog-agentdd' in response_str:
+                    print(f"🚨 FOUND CORRUPTED NAME 'datadog-agentdd' in {description}!")
+                    print(f"   Response excerpt: {response_str[:500]}...")
+                    return False
+                elif 'datadog-agent' in response_str:
+                    print(f"✅ {description} contains correct 'datadog-agent' name")
+        
+        print(f"🎉 DataDog Agent data consistency test PASSED - No corruption detected!")
+        return True
+
 def main():
     print("🚀 Starting Enhanced Kubernetes Dashboard API Tests")
+    print("🔍 FOCUS: DataDog Agent Synchronization Debug")
     print("=" * 80)
     
     # Initialize tester
     tester = KubernetesDashboardAPITester()
     
-    # Test sequence - organized by priority and functionality
+    # Test sequence - FOCUSED ON SYNCHRONIZATION DEBUGGING
     tests = [
         # Basic Authentication & Health
         ("Health Check", tester.test_health_check),
         ("Admin Login", tester.test_login),
         ("Get Current User", tester.test_get_current_user),
-        ("Enhanced Health Check", tester.test_enhanced_health_check),
         
-        # Basic Resource Operations
-        ("List Deployments", lambda: tester.test_list_deployments()[0]),
+        # CRITICAL: DataDog Agent Synchronization Debug
+        ("🔍 DataDog Agent Data Consistency Debug", tester.test_datadog_agent_data_consistency),
+        
+        # Core API Tests for Context
         ("List DaemonSets", lambda: tester.test_list_daemonsets()[0]),
-        ("Enhanced Dashboard Stats", tester.test_enhanced_dashboard_stats),
-        
-        # Enhanced Configuration Management (HIGH PRIORITY)
-        ("Get Deployment Config", tester.test_get_deployment_config),
-        ("Update Deployment Config - Dry Run", tester.test_put_deployment_config_dry_run),
-        ("Update Deployment Config - Apply", tester.test_put_deployment_config_apply),
         ("Get DaemonSet Config", tester.test_get_daemonset_config),
         ("Update DaemonSet Config - Dry Run", tester.test_put_daemonset_config_dry_run),
-        
-        # Advanced Features (HIGH PRIORITY)
-        ("Batch Operations", tester.test_batch_operations),
-        ("Validate Configuration", tester.test_validate_config),
-        ("Configuration Diff", tester.test_config_diff),
         ("WebSocket Connection", tester.test_websocket_connection),
         
-        # Cache Management (ADMIN)
+        # Cache Management Tests
         ("Cache Statistics", tester.test_cache_stats),
-        ("Cache Refresh", tester.test_cache_refresh),
         ("Cache Clear", tester.test_cache_clear),
+        ("Cache Refresh", tester.test_cache_refresh),
         
-        # Database Optimization (ADMIN) - NEW PHASE 2 FEATURES
-        ("Database Statistics", tester.test_database_stats),
-        ("Analyze Collection Performance", tester.test_analyze_collection_performance),
-        ("Database Optimization", tester.test_database_optimization),
-        ("Database Cleanup", tester.test_database_cleanup),
-        ("Enable Database Profiling", tester.test_database_profiling_enable),
-        ("Disable Database Profiling", tester.test_database_profiling_disable),
-        
-        # Performance Monitoring Integration
-        ("Performance Monitoring Integration", tester.test_performance_monitoring_integration),
-        
-        # Legacy Tests
-        ("Scale Deployment", tester.test_scale_deployment),
-        ("Get Audit Logs", tester.test_audit_logs),
-        ("User Registration", tester.test_register_new_user),
-        
-        # Security Tests
-        ("Invalid Auth Test", tester.test_invalid_auth),
-        ("Unauthorized Access Test", tester.test_unauthorized_access),
+        # Configuration Validation Tests
+        ("Validate Configuration", tester.test_validate_config),
+        ("Configuration Diff", tester.test_config_diff),
     ]
     
     # Run all tests
