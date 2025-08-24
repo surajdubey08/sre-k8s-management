@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
 import { Toaster } from './components/ui/sonner';
+import { PerformanceProvider } from './components/PerformanceProvider';
 import useWebSocket from './hooks/useWebSocket';
 import './App.css';
 
