@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import axios from 'axios';
 import { useAuth, useWebSocketContext } from '../App';
-import { usePerformance } from './PerformanceProvider';
+// import { usePerformance } from './PerformanceProvider'; // Temporarily disabled
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
