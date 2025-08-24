@@ -238,7 +238,7 @@ const App = () => {
               </Routes>
               <Toaster position="top-right" />
             </WebSocketProvider>
-          {/* </PerformanceProvider> */}
+          {/* Performance monitoring completely removed */}
         </AuthProvider>
       </Router>
     </div>
