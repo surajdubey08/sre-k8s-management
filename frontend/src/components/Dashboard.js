@@ -83,10 +83,10 @@ const Dashboard = memo(() => {
     }
   }, [simpleApiCall]);
 
-  // Debounced refresh function to avoid excessive API calls
+  // Simple refresh function without debouncing
   const debouncedRefresh = useCallback(
-    debounce(fetchDashboardData, 1000),
-    [fetchDashboardData, debounce]
+    noop(fetchDashboardData),
+    [fetchDashboardData, noop]
   );
 
   const handleScaleDeployment = useCallback(async (namespace, name, replicas) => {
