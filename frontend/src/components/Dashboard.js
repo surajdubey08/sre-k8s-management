@@ -423,7 +423,7 @@ const Dashboard = memo(() => {
               resources={daemonsets}
               resourceType="daemonset"
               onScaleDeployment={handleScaleDeployment}
-              onConfigurationUpdated={debouncedRefresh}
+              onConfigurationUpdated={handleConfigurationUpdated}
               loading={loading}
             />
           </TabsContent>
