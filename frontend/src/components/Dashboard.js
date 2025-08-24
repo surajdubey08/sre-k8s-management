@@ -30,15 +30,16 @@ const Dashboard = memo(() => {
     clearUpdates 
   } = useWebSocketContext();
   
-  const { 
-    optimizedApiCall,
-    useRenderTiming,
-    debounce,
-    getPerformanceStats
-  } = usePerformance();
+  // Temporarily disable performance monitoring to fix infinite loop
+  // const { 
+  //   optimizedApiCall,
+  //   useRenderTiming,
+  //   debounce,
+  //   getPerformanceStats
+  // } = usePerformance();
 
   // Performance monitoring for this component
-  useRenderTiming('Dashboard');
+  // useRenderTiming('Dashboard');
   
   const [dashboardStats, setDashboardStats] = useState(null);
   const [deployments, setDeployments] = useState([]);
