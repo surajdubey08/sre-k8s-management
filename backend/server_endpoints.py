@@ -5,6 +5,7 @@ Enhanced API endpoints for Kubernetes resource management
 from fastapi import HTTPException, Depends, BackgroundTasks
 from typing import List, Optional
 import re
+import logging
 from datetime import datetime, timezone
 
 from server_enhanced import (
