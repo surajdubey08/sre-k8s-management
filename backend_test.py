@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class KubernetesDashboardAPITester:
-    def __init__(self, base_url="https://daemon-control.preview.emergentagent.com"):
+    def __init__(self, base_url="https://kube-updater.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

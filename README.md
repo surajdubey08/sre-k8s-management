@@ -108,7 +108,7 @@ sonner^2.0.3             # Toast notifications
 ## 🚦 **Getting Started**
 
 ### Demo Access
-- **URL**: https://daemon-control.preview.emergentagent.com
+- **URL**: https://kube-updater.preview.emergentagent.com
 - **Username**: `admin`
 - **Password**: `admin123`
 - **Role**: Administrator (full access)
