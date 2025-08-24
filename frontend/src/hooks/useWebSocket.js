@@ -140,7 +140,7 @@ const useWebSocket = (url, options = {}) => {
     reconnectTimeoutRef.current = setTimeout(() => {
       connect();
     }, reconnectInterval);
-  }, [connect, reconnectAttempts, reconnectInterval, showNotifications]);
+  }, [reconnectInterval]); // Remove connect from dependencies
 
   const handleMessageNotification = (message) => {
     switch (message.type) {
