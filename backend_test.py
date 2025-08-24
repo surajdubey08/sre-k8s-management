@@ -928,6 +928,17 @@ def main():
         ("Cache Refresh", tester.test_cache_refresh),
         ("Cache Clear", tester.test_cache_clear),
         
+        # Database Optimization (ADMIN) - NEW PHASE 2 FEATURES
+        ("Database Statistics", tester.test_database_stats),
+        ("Analyze Collection Performance", tester.test_analyze_collection_performance),
+        ("Database Optimization", tester.test_database_optimization),
+        ("Database Cleanup", tester.test_database_cleanup),
+        ("Enable Database Profiling", tester.test_database_profiling_enable),
+        ("Disable Database Profiling", tester.test_database_profiling_disable),
+        
+        # Performance Monitoring Integration
+        ("Performance Monitoring Integration", tester.test_performance_monitoring_integration),
+        
         # Legacy Tests
         ("Scale Deployment", tester.test_scale_deployment),
         ("Get Audit Logs", tester.test_audit_logs),
