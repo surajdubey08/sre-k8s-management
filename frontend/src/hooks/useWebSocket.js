@@ -206,7 +206,7 @@ const useWebSocket = (url, options = {}) => {
     };
   }, [connectionState, connectionCount]);
 
-  // Auto-connect on mount
+  // Auto-connect on mount - remove connect/disconnect from dependencies to avoid infinite loop
   useEffect(() => {
     if (autoConnect) {
       connect();
@@ -215,14 +215,17 @@ const useWebSocket = (url, options = {}) => {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, autoConnect]);
+  }, [autoConnect]); // Only depend on autoConnect, not the functions
 
-  // Cleanup on unmount
+  // Cleanup on unmount - remove disconnect from dependencies
   useEffect(() => {
     return () => {
-      disconnect();
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmount');
+        wsRef.current = null;
+      }
     };
-  }, [disconnect]);
+  }, []); // No dependencies for cleanup
 
   return {
     connectionState,
