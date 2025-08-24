@@ -168,7 +168,7 @@ backend:
   - task: "WebSocket Real-time Updates"
     implemented: true
     working: true
-    file: "server_enhanced.py"
+    file: "hooks/useWebSocket.js, App.js"
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
@@ -179,6 +179,12 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ PASSED - WebSocket real-time updates working perfectly. Successfully established WebSocket connection and received 6 real-time messages during testing. Connection management (connect/disconnect) working correctly. Real-time broadcasting functional."
+      - working: false
+        agent: "user"
+        comment: "Maximum update depth exceeded error persisting - infinite loop in WebSocket error handling causing application crash."
+      - working: true
+        agent: "main"
+        comment: "INFINITE LOOP FIXED: Fixed React infinite loop in WebSocket implementation. Issues were: 1) WebSocketProvider callback functions (onMessage, onOpen, onClose, onError) were not memoized, causing useWebSocket hook to recreate connection on every render. 2) useWebSocket useEffect had connect/disconnect functions in dependency array, causing infinite re-creation. Fixed by memoizing all callback functions with useCallback and removing function dependencies from useEffect arrays. WebSocket now stable without infinite loops."
 
   - task: "Batch Operations Support"
     implemented: true
