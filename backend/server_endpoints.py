@@ -465,8 +465,7 @@ async def validate_configuration(
 # Configuration diff endpoint
 @app.post("/api/config-diff")
 async def get_configuration_diff(
-    original_config: dict,
-    updated_config: dict,
+    request: dict,
     current_user: User = Depends(get_current_user)
 ):
     """Get detailed configuration diff"""
