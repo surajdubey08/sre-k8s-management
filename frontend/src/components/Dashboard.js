@@ -507,10 +507,7 @@ const Dashboard = memo(() => {
             </Card>
           </TabsContent>
 
-          {/* Performance Tab */}
-          <TabsContent value="performance" className="space-y-6 mt-6">
-            <PerformanceDashboard />
-          </TabsContent>
+          {/* Performance Tab - REMOVED: Performance monitoring disabled to fix infinite loop issues */}
         </Tabs>
       </main>
     </div>
