@@ -18,7 +18,7 @@ class KubernetesDashboardAPITester:
         self.websocket_messages = []
         self.ws_connection = None
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None, params=None):
         """Run a single API test"""
         url = f"{self.api_url}/{endpoint}"
         test_headers = {'Content-Type': 'application/json'}
@@ -35,11 +35,13 @@ class KubernetesDashboardAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=test_headers, timeout=10)
+                response = requests.get(url, headers=test_headers, params=params, timeout=10)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=test_headers, timeout=10)
+                response = requests.post(url, json=data, headers=test_headers, params=params, timeout=10)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=test_headers, params=params, timeout=10)
             elif method == 'PATCH':
-                response = requests.patch(url, json=data, headers=test_headers, timeout=10)
+                response = requests.patch(url, json=data, headers=test_headers, params=params, timeout=10)
 
             success = response.status_code == expected_status
             if success:
