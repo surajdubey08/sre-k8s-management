@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import ConfigurationEditor from './ConfigurationEditor';
 import EnhancedConfigurationEditor from './EnhancedConfigurationEditor';
 import OptimizedResourceList from './OptimizedResourceList';
-import PerformanceDashboard from './PerformanceDashboard';
+// Removed PerformanceDashboard import - performance monitoring disabled
 import { 
   Shield, Server, Activity, Users, LogOut, RefreshCw, Settings, 
   Play, Square, BarChart3, Clock, AlertTriangle, CheckCircle, 
