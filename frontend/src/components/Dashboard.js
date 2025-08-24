@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../App';
+import { useAuth, useWebSocketContext } from '../App';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner';
 import ConfigurationEditor from './ConfigurationEditor';
+import EnhancedConfigurationEditor from './EnhancedConfigurationEditor';
 import { 
   Shield, Server, Activity, Users, LogOut, RefreshCw, Settings, 
   Play, Square, BarChart3, Clock, AlertTriangle, CheckCircle, 
   XCircle, Zap, Database, Network, Terminal, Eye, Scale,
-  Container, Layers, GitBranch, HardDrive, Cpu, MemoryStick
+  Container, Layers, GitBranch, HardDrive, Cpu, MemoryStick,
+  Wifi, WifiOff, Radio
 } from 'lucide-react';
 
 const Dashboard = () => {
