@@ -20,7 +20,7 @@ import {
   Wifi, WifiOff, Radio, TrendingUp
 } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = memo(() => {
   const { user, logout } = useAuth();
   const { 
     isConnected, 
@@ -29,6 +29,16 @@ const Dashboard = () => {
     realTimeUpdates, 
     clearUpdates 
   } = useWebSocketContext();
+  
+  const { 
+    optimizedApiCall,
+    useRenderTiming,
+    debounce,
+    getPerformanceStats
+  } = usePerformance();
+
+  // Performance monitoring for this component
+  useRenderTiming('Dashboard');
   
   const [dashboardStats, setDashboardStats] = useState(null);
   const [deployments, setDeployments] = useState([]);
