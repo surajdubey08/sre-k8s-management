@@ -219,24 +219,26 @@ const App = () => {
     <div className="App">
       <Router>
         <AuthProvider>
-          <WebSocketProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-            <Toaster position="top-right" />
-          </WebSocketProvider>
+          <PerformanceProvider>
+            <WebSocketProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+              <Toaster position="top-right" />
+            </WebSocketProvider>
+          </PerformanceProvider>
         </AuthProvider>
       </Router>
     </div>
