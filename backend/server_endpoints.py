@@ -22,7 +22,7 @@ from services.database_optimizer import DatabaseOptimizer
 async def list_deployments(
     namespace: Optional[str] = None,
     label_selector: Optional[str] = None,
-    use_cache: bool = True,
+    use_cache: bool = False,  # DISABLED CACHE for fresh deployment data
     current_user: User = Depends(get_current_user)
 ):
     try:
