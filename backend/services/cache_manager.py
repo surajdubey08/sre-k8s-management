@@ -159,8 +159,21 @@ class KubernetesCacheManager:
         }
         return ttl_mapping.get(strategy, 0)
 
+    def _ensure_cleanup_task(self):
+        """Ensure cleanup task is running"""
+        if not self._cleanup_started:
+            try:
+                if self._cleanup_task is None:
+                    self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+                    self._cleanup_started = True
+            except RuntimeError:
+                # No event loop running yet
+                pass
+
     async def get(self, key: str) -> Optional[Any]:
         """Get cached data"""
+        self._ensure_cleanup_task()
+        
         if key not in self._cache:
             self._stats['misses'] += 1
             return None
