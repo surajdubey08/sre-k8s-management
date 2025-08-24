@@ -19,6 +19,14 @@ import {
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const { 
+    isConnected, 
+    isConnecting, 
+    connectionStats, 
+    realTimeUpdates, 
+    clearUpdates 
+  } = useWebSocketContext();
+  
   const [dashboardStats, setDashboardStats] = useState(null);
   const [deployments, setDeployments] = useState([]);
   const [daemonsets, setDaemonsets] = useState([]);
@@ -26,6 +34,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [refreshing, setRefreshing] = useState(false);
+  const [showEnhancedEditor, setShowEnhancedEditor] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
