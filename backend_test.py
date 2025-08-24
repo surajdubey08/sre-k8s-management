@@ -714,48 +714,89 @@ class KubernetesDashboardAPITester:
         return success
 
 def main():
-    print("🚀 Starting Kubernetes Dashboard API Tests")
-    print("=" * 60)
+    print("🚀 Starting Enhanced Kubernetes Dashboard API Tests")
+    print("=" * 80)
     
     # Initialize tester
     tester = KubernetesDashboardAPITester()
     
-    # Test sequence
+    # Test sequence - organized by priority and functionality
     tests = [
+        # Basic Authentication & Health
         ("Health Check", tester.test_health_check),
         ("Admin Login", tester.test_login),
         ("Get Current User", tester.test_get_current_user),
-        ("User Registration", tester.test_register_new_user),
-        ("Dashboard Stats", tester.test_dashboard_stats),
+        ("Enhanced Health Check", tester.test_enhanced_health_check),
+        
+        # Basic Resource Operations
         ("List Deployments", lambda: tester.test_list_deployments()[0]),
         ("List DaemonSets", lambda: tester.test_list_daemonsets()[0]),
+        ("Enhanced Dashboard Stats", tester.test_enhanced_dashboard_stats),
+        
+        # Enhanced Configuration Management (HIGH PRIORITY)
+        ("Get Deployment Config", tester.test_get_deployment_config),
+        ("Update Deployment Config - Dry Run", tester.test_put_deployment_config_dry_run),
+        ("Update Deployment Config - Apply", tester.test_put_deployment_config_apply),
+        ("Get DaemonSet Config", tester.test_get_daemonset_config),
+        ("Update DaemonSet Config - Dry Run", tester.test_put_daemonset_config_dry_run),
+        
+        # Advanced Features (HIGH PRIORITY)
+        ("Batch Operations", tester.test_batch_operations),
+        ("Validate Configuration", tester.test_validate_config),
+        ("Configuration Diff", tester.test_config_diff),
+        ("WebSocket Connection", tester.test_websocket_connection),
+        
+        # Cache Management (ADMIN)
+        ("Cache Statistics", tester.test_cache_stats),
+        ("Cache Refresh", tester.test_cache_refresh),
+        ("Cache Clear", tester.test_cache_clear),
+        
+        # Legacy Tests
         ("Scale Deployment", tester.test_scale_deployment),
         ("Get Audit Logs", tester.test_audit_logs),
+        ("User Registration", tester.test_register_new_user),
+        
+        # Security Tests
         ("Invalid Auth Test", tester.test_invalid_auth),
         ("Unauthorized Access Test", tester.test_unauthorized_access),
     ]
     
     # Run all tests
+    critical_failures = []
     for test_name, test_func in tests:
         try:
+            print(f"\n{'='*60}")
             result = test_func()
             if not result:
                 print(f"⚠️  Test '{test_name}' failed but continuing...")
+                # Mark critical tests
+                if any(keyword in test_name.lower() for keyword in ['config', 'batch', 'validate', 'diff', 'websocket']):
+                    critical_failures.append(test_name)
         except Exception as e:
             print(f"💥 Test '{test_name}' crashed: {str(e)}")
+            if any(keyword in test_name.lower() for keyword in ['config', 'batch', 'validate', 'diff', 'websocket']):
+                critical_failures.append(test_name)
     
     # Print final results
-    print("\n" + "=" * 60)
-    print(f"📊 Final Results: {tester.tests_passed}/{tester.tests_run} tests passed")
+    print("\n" + "=" * 80)
+    print(f"📊 FINAL RESULTS: {tester.tests_passed}/{tester.tests_run} tests passed")
+    
+    if critical_failures:
+        print(f"🚨 CRITICAL FAILURES ({len(critical_failures)}):")
+        for failure in critical_failures:
+            print(f"   ❌ {failure}")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
+        print("🎉 ALL TESTS PASSED! Enhanced API is fully functional")
         return 0
-    elif tester.tests_passed >= tester.tests_run * 0.8:
-        print("✅ Most tests passed - API is mostly functional")
+    elif tester.tests_passed >= tester.tests_run * 0.8 and not critical_failures:
+        print("✅ MOST TESTS PASSED - API is mostly functional")
         return 0
+    elif critical_failures:
+        print("❌ CRITICAL FEATURES FAILED - Enhanced API has significant issues")
+        return 1
     else:
-        print("❌ Many tests failed - API has significant issues")
+        print("❌ MANY TESTS FAILED - API has significant issues")
         return 1
 
 if __name__ == "__main__":
