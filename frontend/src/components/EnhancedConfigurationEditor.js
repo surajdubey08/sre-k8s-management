@@ -90,7 +90,28 @@ const EnhancedConfigurationEditor = ({
 
   const handleConfigChange = (value) => {
     setCurrentConfig(value || '');
-    const changed = value !== originalConfig;
+    
+    // Normalize both values to JSON for comparison
+    let changed = false;
+    try {
+      // Parse original config (always YAML) to object
+      const originalData = yaml.load(originalConfig);
+      
+      // Parse current value to object based on viewMode
+      let currentData;
+      if (viewMode === 'yaml') {
+        currentData = yaml.load(value || '');
+      } else if (viewMode === 'json') {
+        currentData = JSON.parse(value || '{}');
+      }
+      
+      // Deep comparison of objects
+      changed = JSON.stringify(originalData) !== JSON.stringify(currentData);
+    } catch (error) {
+      // If parsing fails, fall back to string comparison
+      changed = value !== originalConfig;
+    }
+    
     setHasChanges(changed);
     setValidationError('');
     setValidationResults(null);
