@@ -250,10 +250,7 @@ const Dashboard = memo(() => {
               <Eye className="h-4 w-4 mr-2" />
               Audit Logs
             </TabsTrigger>
-            <TabsTrigger value="performance" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Performance
-            </TabsTrigger>
+            {/* Performance tab removed - performance monitoring disabled */}
           </TabsList>
 
           {/* Overview Tab */}
