@@ -30,6 +30,32 @@ const ConfigurationEditor = ({
   const [validationError, setValidationError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
 
+  // Auto-convert config when view mode changes
+  useEffect(() => {
+    if (!currentConfig) return;
+    
+    try {
+      if (viewMode === 'json' && !currentConfig.trim().startsWith('{')) {
+        // Convert YAML to JSON
+        const yamlData = yaml.load(currentConfig);
+        const jsonConfig = JSON.stringify(yamlData, null, 2);
+        setCurrentConfig(jsonConfig);
+      } else if (viewMode === 'yaml' && currentConfig.trim().startsWith('{')) {
+        // Convert JSON to YAML
+        const jsonData = JSON.parse(currentConfig);
+        const yamlConfig = yaml.dump(jsonData, { 
+          indent: 2, 
+          lineWidth: 120,
+          noRefs: true 
+        });
+        setCurrentConfig(yamlConfig);
+      }
+    } catch (error) {
+      console.warn('Auto-conversion failed:', error);
+      // Don't show error toast for auto-conversion, just keep current content
+    }
+  }, [viewMode]);
+
   const fetchConfiguration = async () => {
     setIsLoading(true);
     setValidationError('');
