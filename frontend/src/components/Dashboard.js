@@ -125,10 +125,25 @@ const Dashboard = () => {
               </div>
               <div className="h-6 w-px bg-slate-600"></div>
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  isConnected ? 'bg-emerald-400' : isConnecting ? 'bg-yellow-400' : 'bg-red-400'
+                }`}></div>
                 <span className="text-sm text-slate-300">
                   {dashboardStats?.cluster_status === 'connected' ? 'Cluster Connected' : 'Mock Mode'}
                 </span>
+                <div className="h-3 w-px bg-slate-600 mx-2"></div>
+                <div className="flex items-center space-x-1">
+                  {isConnected ? (
+                    <Wifi className="h-3 w-3 text-emerald-400" />
+                  ) : isConnecting ? (
+                    <Radio className="h-3 w-3 text-yellow-400 animate-pulse" />
+                  ) : (
+                    <WifiOff className="h-3 w-3 text-red-400" />
+                  )}
+                  <span className="text-xs text-slate-400">
+                    {isConnected ? 'Live' : isConnecting ? 'Connecting...' : 'Offline'}
+                  </span>
+                </div>
               </div>
             </div>
 
