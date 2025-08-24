@@ -365,7 +365,7 @@ const EnhancedConfigurationEditor = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col glass-effect border-slate-700">
+      <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden flex flex-col glass-effect border-slate-700">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
