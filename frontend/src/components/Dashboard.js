@@ -221,7 +221,7 @@ const Dashboard = memo(() => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 bg-slate-800/50 border border-slate-700">
+          <TabsList className="grid w-full grid-cols-5 bg-slate-800/50 border border-slate-700">
             <TabsTrigger value="overview" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -237,6 +237,10 @@ const Dashboard = memo(() => {
             <TabsTrigger value="audit" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
               <Eye className="h-4 w-4 mr-2" />
               Audit Logs
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Performance
             </TabsTrigger>
           </TabsList>
 
