@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 class KubernetesDashboardAPITester:
-    def __init__(self, base_url="https://code-reviver.preview.emergentagent.com"):
+    def __init__(self, base_url="https://editor-bounds-fix.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.ws_url = f"{base_url.replace('https://', 'wss://').replace('http://', 'ws://')}/ws"

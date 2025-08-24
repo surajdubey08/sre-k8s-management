@@ -108,7 +108,7 @@ sonner^2.0.3             # Toast notifications
 ## 🚦 **Getting Started**
 
 ### Demo Access
-- **URL**: https://code-reviver.preview.emergentagent.com
+- **URL**: https://editor-bounds-fix.preview.emergentagent.com
 - **Username**: `admin`
 - **Password**: `admin123`
 - **Role**: Administrator (full access)
