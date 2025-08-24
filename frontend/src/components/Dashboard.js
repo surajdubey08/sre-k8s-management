@@ -412,7 +412,7 @@ const Dashboard = memo(() => {
             </div>
           </TabsContent>
 
-          {/* Deployments Tab */}
+          {/* Deployments Tab - Using Optimized Resource List */}
           <TabsContent value="deployments" className="space-y-6 mt-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-white">Deployments</h2>
@@ -421,125 +421,16 @@ const Dashboard = memo(() => {
               </Badge>
             </div>
 
-            <div className="resource-grid">
-              {deployments.map((deployment, index) => (
-                <Card key={index} className="resource-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-white flex items-center space-x-2">
-                        <Container className="h-5 w-5 text-cyan-400" />
-                        <span>{deployment.name}</span>
-                      </CardTitle>
-                      {getStatusBadge(deployment.status.ready_replicas, deployment.status.replicas)}
-                    </div>
-                    <CardDescription>
-                      <span className="text-slate-400">Namespace: </span>
-                      <span className="text-slate-300">{deployment.namespace}</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-400">Replicas</p>
-                        <p className={`font-mono font-bold ${getStatusColor(deployment.status, deployment.status.replicas, deployment.status.ready_replicas)}`}>
-                          {deployment.status.ready_replicas}/{deployment.status.replicas}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Updated</p>
-                        <p className="font-mono text-slate-300">{deployment.status.updated_replicas || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Available</p>
-                        <p className="font-mono text-slate-300">{deployment.status.available_replicas || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Created</p>
-                        <p className="text-xs text-slate-400">{formatDate(deployment.created)}</p>
-                      </div>
-                    </div>
-
-                    {deployment.labels && (
-                      <div>
-                        <p className="text-slate-400 text-sm mb-2">Labels</p>
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(deployment.labels).slice(0, 3).map(([key, value]) => (
-                            <Badge key={key} variant="outline" className="text-xs border-slate-600 text-slate-400">
-                              {key}: {value}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex space-x-2 pt-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="btn-secondary flex-1"
-                        onClick={() => handleScaleDeployment(deployment.namespace, deployment.name, deployment.status.replicas + 1)}
-                      >
-                        <Scale className="h-3 w-3 mr-1" />
-                        Scale Up
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="btn-secondary flex-1"
-                        onClick={() => handleScaleDeployment(deployment.namespace, deployment.name, Math.max(0, deployment.status.replicas - 1))}
-                        disabled={deployment.status.replicas === 0}
-                      >
-                        <Scale className="h-3 w-3 mr-1" />
-                        Scale Down
-                      </Button>
-                    </div>
-                    
-                    <div className="pt-2">
-                      <div className="flex space-x-2">
-                        {showEnhancedEditor ? (
-                          <EnhancedConfigurationEditor
-                            resource={deployment}
-                            resourceType="deployment"
-                            onConfigurationUpdated={fetchDashboardData}
-                          />
-                        ) : (
-                          <ConfigurationEditor
-                            resource={deployment}
-                            resourceType="deployment"
-                            onConfigurationUpdated={fetchDashboardData}
-                          />
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowEnhancedEditor(!showEnhancedEditor)}
-                          className="text-xs"
-                        >
-                          {showEnhancedEditor ? 'Basic' : 'Enhanced'}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {deployments.length === 0 && (
-              <Card className="glass-effect text-center py-12">
-                <CardContent>
-                  <Container className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-400">No deployments found</p>
-                  <p className="text-slate-500 text-sm mt-2">
-                    {dashboardStats?.cluster_status === 'mock_mode' 
-                      ? 'Connect to a real cluster to see deployments' 
-                      : 'Deploy your first application to get started'}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <OptimizedResourceList
+              resources={deployments}
+              resourceType="deployment"
+              onScaleDeployment={handleScaleDeployment}
+              onConfigurationUpdated={debouncedRefresh}
+              loading={loading}
+            />
           </TabsContent>
 
-          {/* DaemonSets Tab */}
+          {/* DaemonSets Tab - Using Optimized Resource List */}
           <TabsContent value="daemonsets" className="space-y-6 mt-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-white">DaemonSets</h2>
@@ -548,104 +439,13 @@ const Dashboard = memo(() => {
               </Badge>
             </div>
 
-            <div className="resource-grid">
-              {daemonsets.map((daemonset, index) => (
-                <Card key={index} className="resource-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-white flex items-center space-x-2">
-                        <Layers className="h-5 w-5 text-blue-400" />
-                        <span>{daemonset.name}</span>
-                      </CardTitle>
-                      {getStatusBadge(daemonset.status.number_ready, daemonset.status.desired_number_scheduled)}
-                    </div>
-                    <CardDescription>
-                      <span className="text-slate-400">Namespace: </span>
-                      <span className="text-slate-300">{daemonset.namespace}</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-400">Ready</p>
-                        <p className={`font-mono font-bold ${getStatusColor(daemonset.status, daemonset.status.desired_number_scheduled, daemonset.status.number_ready)}`}>
-                          {daemonset.status.number_ready}/{daemonset.status.desired_number_scheduled}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Current</p>
-                        <p className="font-mono text-slate-300">{daemonset.status.current_number_scheduled || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Updated</p>
-                        <p className="font-mono text-slate-300">{daemonset.status.updated_number_scheduled || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Available</p>
-                        <p className="font-mono text-slate-300">{daemonset.status.number_available || 0}</p>
-                      </div>
-                    </div>
-
-                    {daemonset.labels && (
-                      <div>
-                        <p className="text-slate-400 text-sm mb-2">Labels</p>
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(daemonset.labels).slice(0, 3).map(([key, value]) => (
-                            <Badge key={key} variant="outline" className="text-xs border-slate-600 text-slate-400">
-                              {key}: {value}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="text-xs text-slate-500">
-                      Created: {formatDate(daemonset.created)}
-                    </div>
-                    
-                    <div className="pt-2">
-                      <div className="flex space-x-2">
-                        {showEnhancedEditor ? (
-                          <EnhancedConfigurationEditor
-                            resource={daemonset}
-                            resourceType="daemonset"
-                            onConfigurationUpdated={fetchDashboardData}
-                          />
-                        ) : (
-                          <ConfigurationEditor
-                            resource={daemonset}
-                            resourceType="daemonset"
-                            onConfigurationUpdated={fetchDashboardData}
-                          />
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowEnhancedEditor(!showEnhancedEditor)}
-                          className="text-xs"
-                        >
-                          {showEnhancedEditor ? 'Basic' : 'Enhanced'}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {daemonsets.length === 0 && (
-              <Card className="glass-effect text-center py-12">
-                <CardContent>
-                  <Layers className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-400">No daemonsets found</p>
-                  <p className="text-slate-500 text-sm mt-2">
-                    {dashboardStats?.cluster_status === 'mock_mode' 
-                      ? 'Connect to a real cluster to see daemonsets' 
-                      : 'DaemonSets ensure pods run on all nodes'}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <OptimizedResourceList
+              resources={daemonsets}
+              resourceType="daemonset"
+              onScaleDeployment={handleScaleDeployment}
+              onConfigurationUpdated={debouncedRefresh}
+              loading={loading}
+            />
           </TabsContent>
 
           {/* Audit Logs Tab */}
