@@ -381,11 +381,29 @@ const Dashboard = () => {
                     </div>
                     
                     <div className="pt-2">
-                      <ConfigurationEditor
-                        resource={deployment}
-                        resourceType="deployment"
-                        onConfigurationUpdated={fetchDashboardData}
-                      />
+                      <div className="flex space-x-2">
+                        {showEnhancedEditor ? (
+                          <EnhancedConfigurationEditor
+                            resource={deployment}
+                            resourceType="deployment"
+                            onConfigurationUpdated={fetchDashboardData}
+                          />
+                        ) : (
+                          <ConfigurationEditor
+                            resource={deployment}
+                            resourceType="deployment"
+                            onConfigurationUpdated={fetchDashboardData}
+                          />
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowEnhancedEditor(!showEnhancedEditor)}
+                          className="text-xs"
+                        >
+                          {showEnhancedEditor ? 'Basic' : 'Enhanced'}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
