@@ -474,6 +474,13 @@ async def get_configuration_diff(
         if not service.config_manager:
             raise HTTPException(status_code=503, detail="Configuration manager not available")
         
+        # Extract configurations from request
+        original_config = request.get("original_config")
+        updated_config = request.get("updated_config")
+        
+        if not original_config or not updated_config:
+            raise HTTPException(status_code=400, detail="Both original_config and updated_config are required")
+        
         diff = service.config_manager.get_configuration_diff(original_config, updated_config)
         
         return {
