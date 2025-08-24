@@ -262,7 +262,26 @@ const EnhancedConfigurationEditor = ({
           toast.success('Dry run completed successfully - no changes applied');
         } else {
           toast.success('Configuration updated successfully');
-          setOriginalConfig(currentConfig);
+          
+          // Normalize the saved config to YAML format for originalConfig
+          try {
+            let configData;
+            if (viewMode === 'yaml') {
+              configData = yaml.load(currentConfig);
+            } else {
+              configData = JSON.parse(currentConfig);
+            }
+            const normalizedYaml = yaml.dump(configData, { 
+              indent: 2, 
+              lineWidth: 120,
+              noRefs: true 
+            });
+            setOriginalConfig(normalizedYaml);
+          } catch (error) {
+            // Fallback to direct assignment
+            setOriginalConfig(currentConfig);
+          }
+          
           setHasChanges(false);
         }
       } else {
