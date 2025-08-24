@@ -219,7 +219,7 @@ const App = () => {
     <div className="App">
       <Router>
         <AuthProvider>
-          <PerformanceProvider>
+          {/* <PerformanceProvider> Temporarily disabled to fix infinite loop */}
             <WebSocketProvider>
               <Routes>
                 <Route path="/login" element={<Login />} />
@@ -238,7 +238,7 @@ const App = () => {
               </Routes>
               <Toaster position="top-right" />
             </WebSocketProvider>
-          </PerformanceProvider>
+          {/* </PerformanceProvider> */}
         </AuthProvider>
       </Router>
     </div>
