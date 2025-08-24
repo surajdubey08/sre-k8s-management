@@ -493,3 +493,166 @@ async def get_configuration_diff(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diff calculation error: {str(e)}")
+
+# Database Optimization Endpoints (Admin only)
+db_optimizer = DatabaseOptimizer(db)
+
+@app.get("/api/admin/database/stats")
+async def get_database_stats(current_user: User = Depends(require_admin)):
+    """Get comprehensive database statistics"""
+    try:
+        stats = await db_optimizer.get_database_stats()
+        
+        await create_audit_log(
+            "database_stats",
+            "database/stats",
+            current_user.username,
+            True
+        )
+        
+        return stats
+    except Exception as e:
+        await create_audit_log(
+            "database_stats",
+            "database/stats", 
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to get database stats: {str(e)}")
+
+@app.get("/api/admin/database/analyze/{collection_name}")
+async def analyze_collection_performance(
+    collection_name: str,
+    current_user: User = Depends(require_admin)
+):
+    """Analyze performance for a specific collection"""
+    try:
+        analysis = await db_optimizer.analyze_collection_performance(collection_name)
+        
+        await create_audit_log(
+            "analyze_collection",
+            f"database/analyze/{collection_name}",
+            current_user.username,
+            True,
+            {"collection": collection_name}
+        )
+        
+        return analysis
+    except Exception as e:
+        await create_audit_log(
+            "analyze_collection",
+            f"database/analyze/{collection_name}",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to analyze collection: {str(e)}")
+
+@app.post("/api/admin/database/optimize")
+async def optimize_database(current_user: User = Depends(require_admin)):
+    """Perform comprehensive database optimization"""
+    try:
+        results = await db_optimizer.optimize_queries()
+        
+        await create_audit_log(
+            "database_optimize",
+            "database/optimize",
+            current_user.username,
+            True,
+            {"optimized_collections": list(results.keys())}
+        )
+        
+        return {
+            "success": True,
+            "message": "Database optimization completed",
+            "results": results,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        await create_audit_log(
+            "database_optimize", 
+            "database/optimize",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to optimize database: {str(e)}")
+
+@app.post("/api/admin/database/cleanup")
+async def cleanup_old_data(
+    days_to_keep: int = 30,
+    current_user: User = Depends(require_admin)
+):
+    """Clean up old data and optimize storage"""
+    try:
+        results = await db_optimizer.cleanup_old_data(days_to_keep)
+        
+        await create_audit_log(
+            "database_cleanup",
+            "database/cleanup", 
+            current_user.username,
+            True,
+            {"days_to_keep": days_to_keep, "results": results}
+        )
+        
+        return {
+            "success": True,
+            "message": f"Database cleanup completed - kept last {days_to_keep} days",
+            "results": results,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        await create_audit_log(
+            "database_cleanup",
+            "database/cleanup",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup database: {str(e)}")
+
+@app.post("/api/admin/database/profiling")
+async def toggle_database_profiling(
+    enable: bool = True,
+    level: int = 1,
+    slow_ms: int = 100,
+    current_user: User = Depends(require_admin)
+):
+    """Enable or disable database profiling for performance monitoring"""
+    try:
+        if enable:
+            success = await db_optimizer.enable_profiling(level, slow_ms)
+            action = "enable"
+            message = f"Database profiling enabled at level {level} for queries slower than {slow_ms}ms"
+        else:
+            success = await db_optimizer.disable_profiling()
+            action = "disable"
+            message = "Database profiling disabled"
+        
+        await create_audit_log(
+            f"database_profiling_{action}",
+            "database/profiling",
+            current_user.username,
+            success,
+            {"enable": enable, "level": level, "slow_ms": slow_ms}
+        )
+        
+        if success:
+            return {
+                "success": True,
+                "message": message,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to {action} database profiling")
+            
+    except Exception as e:
+        await create_audit_log(
+            f"database_profiling_{action}",
+            "database/profiling",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to toggle profiling: {str(e)}")
