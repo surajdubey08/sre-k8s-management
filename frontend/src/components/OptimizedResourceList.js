@@ -190,7 +190,7 @@ const ResourceCard = memo(({
   );
 });
 
-ResourceItem.displayName = 'ResourceItem';
+ResourceCard.displayName = 'ResourceCard';
 
 const OptimizedResourceList = ({ 
   resources, 
