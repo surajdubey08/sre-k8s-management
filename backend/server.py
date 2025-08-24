@@ -263,6 +263,152 @@ class KubernetesMockService:
                 return ResourceInfo(**dep)
         raise HTTPException(status_code=404, detail="Deployment not found")
     
+    async def get_deployment_config(self, namespace: str, name: str):
+        """Get complete deployment configuration for editing"""
+        for dep in self.mock_data["deployments"]:
+            if dep["name"] == name and dep["namespace"] == namespace:
+                # Return a mock configuration that looks like a real K8s deployment
+                return {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "metadata": {
+                        "name": name,
+                        "namespace": namespace,
+                        "labels": dep.get("labels", {}),
+                        "annotations": dep.get("annotations", {})
+                    },
+                    "spec": {
+                        "replicas": dep["status"]["replicas"],
+                        "selector": {
+                            "matchLabels": dep.get("labels", {})
+                        },
+                        "template": {
+                            "metadata": {
+                                "labels": dep.get("labels", {})
+                            },
+                            "spec": {
+                                "containers": [
+                                    {
+                                        "name": "nginx",
+                                        "image": "nginx:latest",
+                                        "ports": [{"containerPort": 80}],
+                                        "env": [
+                                            {"name": "ENV", "value": "production"},
+                                            {"name": "LOG_LEVEL", "value": "info"}
+                                        ],
+                                        "resources": {
+                                            "requests": {"memory": "128Mi", "cpu": "100m"},
+                                            "limits": {"memory": "256Mi", "cpu": "200m"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    async def update_deployment_config(self, namespace: str, name: str, config: Dict[str, Any], user: str):
+        """Update deployment configuration"""
+        for dep in self.mock_data["deployments"]:
+            if dep["name"] == name and dep["namespace"] == namespace:
+                # Update the mock data based on the new configuration
+                if "spec" in config and "replicas" in config["spec"]:
+                    dep["status"]["replicas"] = config["spec"]["replicas"]
+                if "metadata" in config and "labels" in config["metadata"]:
+                    dep["labels"] = config["metadata"]["labels"]
+                if "metadata" in config and "annotations" in config["metadata"]:
+                    dep["annotations"] = config["metadata"]["annotations"]
+                
+                return ConfigurationUpdate(
+                    success=True,
+                    message=f"Successfully updated configuration for deployment '{name}'",
+                    applied_changes={
+                        "replicas": config.get("spec", {}).get("replicas"),
+                        "labels": config.get("metadata", {}).get("labels", {}),
+                        "annotations": config.get("metadata", {}).get("annotations", {})
+                    },
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    user=user
+                )
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    async def get_daemonset_config(self, namespace: str, name: str):
+        """Get complete daemonset configuration for editing"""
+        for ds in self.mock_data["daemonsets"]:
+            if ds["name"] == name and ds["namespace"] == namespace:
+                # Return a mock configuration that looks like a real K8s daemonset
+                return {
+                    "apiVersion": "apps/v1",
+                    "kind": "DaemonSet",
+                    "metadata": {
+                        "name": name,
+                        "namespace": namespace,
+                        "labels": ds.get("labels", {}),
+                        "annotations": ds.get("annotations", {})
+                    },
+                    "spec": {
+                        "selector": {
+                            "matchLabels": ds.get("labels", {})
+                        },
+                        "template": {
+                            "metadata": {
+                                "labels": ds.get("labels", {})
+                            },
+                            "spec": {
+                                "containers": [
+                                    {
+                                        "name": "datadog-agent",
+                                        "image": "datadog/agent:latest",
+                                        "ports": [{"containerPort": 8125}],
+                                        "env": [
+                                            {"name": "DD_API_KEY", "value": "your-api-key"},
+                                            {"name": "DD_SITE", "value": "datadoghq.com"},
+                                            {"name": "DD_LOGS_ENABLED", "value": "true"}
+                                        ],
+                                        "resources": {
+                                            "requests": {"memory": "256Mi", "cpu": "200m"},
+                                            "limits": {"memory": "512Mi", "cpu": "500m"}
+                                        },
+                                        "volumeMounts": [
+                                            {"name": "dockersocket", "mountPath": "/var/run/docker.sock"},
+                                            {"name": "procdir", "mountPath": "/host/proc", "readOnly": True}
+                                        ]
+                                    }
+                                ],
+                                "volumes": [
+                                    {"name": "dockersocket", "hostPath": {"path": "/var/run/docker.sock"}},
+                                    {"name": "procdir", "hostPath": {"path": "/proc"}}
+                                ]
+                            }
+                        }
+                    }
+                }
+        raise HTTPException(status_code=404, detail="DaemonSet not found")
+    
+    async def update_daemonset_config(self, namespace: str, name: str, config: Dict[str, Any], user: str):
+        """Update daemonset configuration"""
+        for ds in self.mock_data["daemonsets"]:
+            if ds["name"] == name and ds["namespace"] == namespace:
+                # Update the mock data based on the new configuration
+                if "metadata" in config and "labels" in config["metadata"]:
+                    ds["labels"] = config["metadata"]["labels"]
+                if "metadata" in config and "annotations" in config["metadata"]:
+                    ds["annotations"] = config["metadata"]["annotations"]
+                
+                return ConfigurationUpdate(
+                    success=True,
+                    message=f"Successfully updated configuration for daemonset '{name}'",
+                    applied_changes={
+                        "labels": config.get("metadata", {}).get("labels", {}),
+                        "annotations": config.get("metadata", {}).get("annotations", {}),
+                        "containers": len(config.get("spec", {}).get("template", {}).get("spec", {}).get("containers", []))
+                    },
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    user=user
+                )
+        raise HTTPException(status_code=404, detail="DaemonSet not found")
+    
     async def scale_deployment(self, namespace: str, name: str, replicas: int, user: str):
         for dep in self.mock_data["deployments"]:
             if dep["name"] == name and dep["namespace"] == namespace:
