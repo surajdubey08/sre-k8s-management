@@ -501,7 +501,12 @@ const EnhancedConfigurationEditor = ({
                             scrollbar: {
                               vertical: 'auto',
                               horizontal: 'auto'
-                            }
+                            },
+                            selectOnLineNumbers: true,
+                            mouseWheelZoom: true,
+                            contextmenu: true,
+                            quickSuggestions: false,
+                            readOnly: false
                           }}
                         />
                       </CardContent>
