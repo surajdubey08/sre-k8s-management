@@ -242,7 +242,7 @@ frontend:
         comment: "Runtime error reported: 'Uncaught ReferenceError: ResourceItem is not defined' in OptimizedResourceList.js at line 193"
       - working: true
         agent: "main"
-        comment: "Fixed critical frontend runtime error - component naming inconsistency in OptimizedResourceList.js. Component was defined as ResourceCard but referenced as ResourceItem, causing runtime error. Fixed by updating line 193 and renderResourceItem function to use correct ResourceCard component name. Frontend now compiles successfully."
+        comment: "Fixed critical frontend runtime errors: 1) ResourceItem component naming inconsistency in OptimizedResourceList.js (component defined as ResourceCard but referenced as ResourceItem). 2) React infinite loop issue in PerformanceDashboard.js - useEffect had missing dependencies and unmemoized functions in PerformanceProvider causing 'Maximum update depth exceeded' error. Fixed by adding useCallback/useMemo to properly memoize context functions and dependencies. Frontend now compiles successfully without runtime errors."
 
   - task: "Performance Optimizations - Backend" 
     implemented: true
