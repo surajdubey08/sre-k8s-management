@@ -232,6 +232,487 @@ class KubernetesDashboardAPITester:
         self.token = original_token
         return success
 
+    # ========== ENHANCED CONFIGURATION MANAGEMENT TESTS ==========
+    
+    def test_get_deployment_config(self):
+        """Test GET /api/deployment/{namespace}/{name}/config"""
+        # First get deployments to find one to test
+        success, deployments = self.test_list_deployments()
+        if not success or not deployments:
+            print("❌ Cannot test deployment config - no deployments found")
+            return False
+        
+        deployment = deployments[0]
+        namespace = deployment.get('namespace', 'default')
+        name = deployment.get('name', 'nginx-deployment')
+        
+        success, response = self.run_test(
+            f"Get Deployment Config ({namespace}/{name})",
+            "GET",
+            f"deployment/{namespace}/{name}/config",
+            200
+        )
+        return success
+
+    def test_put_deployment_config_dry_run(self):
+        """Test PUT /api/deployment/{namespace}/{name}/config with dry_run=true"""
+        # First get deployments to find one to test
+        success, deployments = self.test_list_deployments()
+        if not success or not deployments:
+            print("❌ Cannot test deployment config update - no deployments found")
+            return False
+        
+        deployment = deployments[0]
+        namespace = deployment.get('namespace', 'default')
+        name = deployment.get('name', 'nginx-deployment')
+        
+        # Get current config first
+        success, current_config = self.run_test(
+            f"Get Current Config for Update Test",
+            "GET",
+            f"deployment/{namespace}/{name}/config",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Modify config for testing (change replicas)
+        test_config = current_config.copy()
+        if 'spec' not in test_config:
+            test_config['spec'] = {}
+        test_config['spec']['replicas'] = 2
+        
+        # Test dry run first
+        success, response = self.run_test(
+            f"Update Deployment Config - Dry Run ({namespace}/{name})",
+            "PUT",
+            f"deployment/{namespace}/{name}/config",
+            200,
+            data={
+                "configuration": test_config,
+                "dry_run": True,
+                "strategy": "merge"
+            }
+        )
+        
+        if success and response.get('dry_run') == True:
+            print(f"   ✅ Dry run successful - {len(response.get('applied_changes', []))} changes detected")
+        
+        return success
+
+    def test_put_deployment_config_apply(self):
+        """Test PUT /api/deployment/{namespace}/{name}/config with actual application"""
+        # First get deployments to find one to test
+        success, deployments = self.test_list_deployments()
+        if not success or not deployments:
+            print("❌ Cannot test deployment config update - no deployments found")
+            return False
+        
+        deployment = deployments[0]
+        namespace = deployment.get('namespace', 'default')
+        name = deployment.get('name', 'nginx-deployment')
+        
+        # Get current config first
+        success, current_config = self.run_test(
+            f"Get Current Config for Apply Test",
+            "GET",
+            f"deployment/{namespace}/{name}/config",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Modify config for testing (change replicas)
+        test_config = current_config.copy()
+        if 'spec' not in test_config:
+            test_config['spec'] = {}
+        test_config['spec']['replicas'] = 3
+        
+        # Apply the configuration
+        success, response = self.run_test(
+            f"Update Deployment Config - Apply ({namespace}/{name})",
+            "PUT",
+            f"deployment/{namespace}/{name}/config",
+            200,
+            data={
+                "configuration": test_config,
+                "dry_run": False,
+                "strategy": "merge"
+            }
+        )
+        
+        if success and response.get('success') == True:
+            print(f"   ✅ Configuration applied - Rollback key: {response.get('rollback_key', 'N/A')}")
+        
+        return success
+
+    def test_get_daemonset_config(self):
+        """Test GET /api/daemonset/{namespace}/{name}/config"""
+        # First get daemonsets to find one to test
+        success, daemonsets = self.test_list_daemonsets()
+        if not success or not daemonsets:
+            print("❌ Cannot test daemonset config - no daemonsets found")
+            return False
+        
+        daemonset = daemonsets[0]
+        namespace = daemonset.get('namespace', 'kube-system')
+        name = daemonset.get('name', 'datadog-agent')
+        
+        success, response = self.run_test(
+            f"Get DaemonSet Config ({namespace}/{name})",
+            "GET",
+            f"daemonset/{namespace}/{name}/config",
+            200
+        )
+        return success
+
+    def test_put_daemonset_config_dry_run(self):
+        """Test PUT /api/daemonset/{namespace}/{name}/config with dry_run=true"""
+        # First get daemonsets to find one to test
+        success, daemonsets = self.test_list_daemonsets()
+        if not success or not daemonsets:
+            print("❌ Cannot test daemonset config update - no daemonsets found")
+            return False
+        
+        daemonset = daemonsets[0]
+        namespace = daemonset.get('namespace', 'kube-system')
+        name = daemonset.get('name', 'datadog-agent')
+        
+        # Get current config first
+        success, current_config = self.run_test(
+            f"Get Current DaemonSet Config",
+            "GET",
+            f"daemonset/{namespace}/{name}/config",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Modify config for testing (add/modify labels)
+        test_config = current_config.copy()
+        if 'metadata' not in test_config:
+            test_config['metadata'] = {}
+        if 'labels' not in test_config['metadata']:
+            test_config['metadata']['labels'] = {}
+        test_config['metadata']['labels']['test-label'] = 'test-value'
+        
+        # Test dry run
+        success, response = self.run_test(
+            f"Update DaemonSet Config - Dry Run ({namespace}/{name})",
+            "PUT",
+            f"daemonset/{namespace}/{name}/config",
+            200,
+            data={
+                "configuration": test_config,
+                "dry_run": True,
+                "strategy": "merge"
+            }
+        )
+        
+        if success and response.get('dry_run') == True:
+            print(f"   ✅ DaemonSet dry run successful - {len(response.get('applied_changes', []))} changes detected")
+        
+        return success
+
+    # ========== ADVANCED FEATURES TESTS ==========
+    
+    def test_batch_operations(self):
+        """Test /api/batch-operations endpoint"""
+        # Get some resources to operate on
+        success, deployments = self.test_list_deployments()
+        if not success or not deployments:
+            print("❌ Cannot test batch operations - no deployments found")
+            return False
+        
+        # Test batch scaling operation
+        resources = []
+        for deployment in deployments[:2]:  # Test with first 2 deployments
+            resources.append({
+                "type": "deployment",
+                "namespace": deployment.get('namespace', 'default'),
+                "name": deployment.get('name')
+            })
+        
+        batch_request = {
+            "resources": resources,
+            "operation": "scale",
+            "parameters": {"replicas": 2}
+        }
+        
+        success, response = self.run_test(
+            "Batch Operations - Scale Deployments",
+            "POST",
+            "batch-operations",
+            200,
+            data=batch_request
+        )
+        
+        if success:
+            print(f"   ✅ Batch operation completed - Success: {response.get('success_count', 0)}, Failed: {response.get('failed_count', 0)}")
+        
+        return success
+
+    def test_validate_config(self):
+        """Test /api/validate-config endpoint"""
+        # Test with a valid deployment configuration
+        valid_config = {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "name": "test-deployment",
+                "namespace": "default"
+            },
+            "spec": {
+                "replicas": 3,
+                "selector": {
+                    "matchLabels": {
+                        "app": "test-app"
+                    }
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "test-app"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "test-container",
+                                "image": "nginx:latest"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        
+        success, response = self.run_test(
+            "Validate Configuration - Valid Config",
+            "POST",
+            "validate-config",
+            200,
+            data=valid_config,
+            params={"resource_type": "deployment"}
+        )
+        
+        if success and response.get('valid') == True:
+            print("   ✅ Configuration validation passed")
+        
+        return success
+
+    def test_config_diff(self):
+        """Test /api/config-diff endpoint"""
+        original_config = {
+            "spec": {
+                "replicas": 2,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "app",
+                                "image": "nginx:1.20"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        
+        updated_config = {
+            "spec": {
+                "replicas": 3,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "app",
+                                "image": "nginx:1.21"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        
+        diff_request = {
+            "original_config": original_config,
+            "updated_config": updated_config
+        }
+        
+        success, response = self.run_test(
+            "Configuration Diff Calculation",
+            "POST",
+            "config-diff",
+            200,
+            data=diff_request
+        )
+        
+        if success and response.get('has_changes') == True:
+            print(f"   ✅ Configuration diff calculated - Changes detected")
+        
+        return success
+
+    def test_websocket_connection(self):
+        """Test WebSocket /ws endpoint"""
+        try:
+            print(f"\n🔍 Testing WebSocket Connection...")
+            print(f"   URL: {self.ws_url}")
+            
+            def on_message(ws, message):
+                self.websocket_messages.append(json.loads(message))
+                print(f"   📨 WebSocket message received: {message[:100]}...")
+            
+            def on_error(ws, error):
+                print(f"   ❌ WebSocket error: {error}")
+            
+            def on_close(ws, close_status_code, close_msg):
+                print(f"   🔌 WebSocket connection closed")
+            
+            def on_open(ws):
+                print(f"   ✅ WebSocket connection opened")
+                # Send a ping message
+                ws.send(json.dumps({"type": "ping"}))
+                # Close after a short delay
+                threading.Timer(2.0, ws.close).start()
+            
+            # Create WebSocket connection
+            ws = websocket.WebSocketApp(
+                self.ws_url,
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close
+            )
+            
+            # Run WebSocket in a separate thread
+            ws_thread = threading.Thread(target=ws.run_forever)
+            ws_thread.daemon = True
+            ws_thread.start()
+            
+            # Wait for connection and messages
+            time.sleep(3)
+            
+            self.tests_run += 1
+            if len(self.websocket_messages) > 0:
+                self.tests_passed += 1
+                print(f"   ✅ WebSocket test passed - Received {len(self.websocket_messages)} messages")
+                return True
+            else:
+                print(f"   ❌ WebSocket test failed - No messages received")
+                return False
+                
+        except Exception as e:
+            self.tests_run += 1
+            print(f"   ❌ WebSocket test failed: {str(e)}")
+            return False
+
+    # ========== CACHE MANAGEMENT TESTS (ADMIN) ==========
+    
+    def test_cache_stats(self):
+        """Test /api/admin/cache/stats endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test cache stats - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Cache Statistics",
+            "GET",
+            "admin/cache/stats",
+            200
+        )
+        
+        if success and 'size' in response:
+            print(f"   ✅ Cache stats retrieved - Size: {response.get('size')}, Hit rate: {response.get('hit_rate_percent', 0)}%")
+        
+        return success
+
+    def test_cache_clear(self):
+        """Test /api/admin/cache/clear endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test cache clear - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Clear Cache",
+            "POST",
+            "admin/cache/clear",
+            200
+        )
+        
+        if success and response.get('success') == True:
+            print(f"   ✅ Cache cleared - {response.get('cleared_count', 0)} entries removed")
+        
+        return success
+
+    def test_cache_refresh(self):
+        """Test /api/admin/cache/refresh endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test cache refresh - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Refresh Cache",
+            "POST",
+            "admin/cache/refresh",
+            200,
+            params={"resource_type": "deployments"}
+        )
+        
+        if success and response.get('success') == True:
+            print(f"   ✅ Cache refresh initiated")
+        
+        return success
+
+    # ========== ENHANCED HEALTH AND STATS TESTS ==========
+    
+    def test_enhanced_health_check(self):
+        """Test enhanced /api/health endpoint with cache stats and WebSocket info"""
+        success, response = self.run_test(
+            "Enhanced Health Check",
+            "GET",
+            "health",
+            200
+        )
+        
+        if success:
+            expected_fields = ['status', 'kubernetes_available', 'cache_stats', 'websocket_connections']
+            missing_fields = [field for field in expected_fields if field not in response]
+            
+            if not missing_fields:
+                print(f"   ✅ Enhanced health check passed - All fields present")
+                print(f"   📊 K8s Available: {response.get('kubernetes_available')}")
+                print(f"   📊 WebSocket Connections: {response.get('websocket_connections', 0)}")
+                cache_stats = response.get('cache_stats', {})
+                print(f"   📊 Cache Size: {cache_stats.get('size', 0)}, Hit Rate: {cache_stats.get('hit_rate_percent', 0)}%")
+            else:
+                print(f"   ⚠️ Missing enhanced fields: {missing_fields}")
+        
+        return success
+
+    def test_enhanced_dashboard_stats(self):
+        """Test enhanced /api/dashboard/stats with cache and WebSocket info"""
+        success, response = self.run_test(
+            "Enhanced Dashboard Stats",
+            "GET",
+            "dashboard/stats",
+            200
+        )
+        
+        if success:
+            expected_fields = ['deployments_count', 'daemonsets_count', 'cache_info', 'websocket_connections']
+            present_fields = [field for field in expected_fields if field in response]
+            
+            print(f"   ✅ Enhanced dashboard stats - Fields present: {len(present_fields)}/{len(expected_fields)}")
+            if 'cache_info' in response:
+                cache_info = response['cache_info']
+                print(f"   📊 Cache Hit Rate: {cache_info.get('hit_rate_percent', 0)}%")
+        
+        return success
+
 def main():
     print("🚀 Starting Kubernetes Dashboard API Tests")
     print("=" * 60)
