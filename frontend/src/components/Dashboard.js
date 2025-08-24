@@ -30,27 +30,15 @@ const Dashboard = memo(() => {
     clearUpdates 
   } = useWebSocketContext();
   
-  // Temporarily disable performance monitoring to fix infinite loop
-  // const { 
-  //   optimizedApiCall,
-  //   useRenderTiming,
-  //   debounce,
-  //   getPerformanceStats
-  // } = usePerformance();
-
-  // Fallback implementations to avoid breaking the component
-  const optimizedApiCall = useCallback(async (apiCall, cacheKey, cacheDuration) => {
-    // Simple fallback - just call the API without caching
+  // Performance monitoring completely removed
+  
+  // Simple API call without caching
+  const simpleApiCall = useCallback(async (apiCall) => {
     return await apiCall();
   }, []);
 
-  const debounce = useCallback((func, delay) => {
-    // Simple fallback - just return the function without debouncing
-    return func;
-  }, []);
-
-  // Performance monitoring for this component
-  // useRenderTiming('Dashboard');
+  // Simple function passthrough (no debouncing)
+  const noop = useCallback((func) => func, []);
   
   const [dashboardStats, setDashboardStats] = useState(null);
   const [deployments, setDeployments] = useState([]);
