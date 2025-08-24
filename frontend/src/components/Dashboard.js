@@ -353,6 +353,14 @@ const Dashboard = () => {
                         Scale Down
                       </Button>
                     </div>
+                    
+                    <div className="pt-2">
+                      <ConfigurationEditor
+                        resource={deployment}
+                        resourceType="deployment"
+                        onConfigurationUpdated={fetchDashboardData}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               ))}
