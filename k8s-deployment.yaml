@@ -1,0 +1,464 @@
+# Kubernetes DaemonSet Management Application - Production Deployment
+# This manifest includes all necessary resources for deploying the application to a Kubernetes cluster
+
+# RBAC Configuration
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-dashboard-serviceaccount
+  namespace: default
+  labels:
+    app: k8s-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-dashboard-cluster-role
+rules:
+# Read access to core resources
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "namespaces", "nodes"]
+  verbs: ["get", "list", "watch"]
+# Read and modify access to apps resources
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets"]
+  verbs: ["get", "list", "watch", "patch", "update"]
+# Scaling operations
+- apiGroups: ["apps"]
+  resources: ["deployments/scale", "deployments/status"]
+  verbs: ["get", "patch", "update"]
+# Pod execution for debugging (optional)
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+# Metrics access (optional)
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-dashboard-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-dashboard-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: k8s-dashboard-serviceaccount
+  namespace: default
+
+---
+# MongoDB Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: default
+  labels:
+    app: mongodb
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:7.0
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: "admin"
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretRef:
+              name: mongodb-secret
+              key: password
+        volumeMounts:
+        - name: mongodb-storage
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: mongodb-storage
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+---
+# MongoDB PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# MongoDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: default
+  labels:
+    app: mongodb
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongodb
+---
+# MongoDB Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongodb-secret
+  namespace: default
+type: Opaque
+data:
+  password: YWRtaW4xMjM=  # base64 encoded "admin123"
+
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-dashboard-backend
+  namespace: default
+  labels:
+    app: k8s-dashboard
+    component: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: k8s-dashboard
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: k8s-dashboard
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: k8s-dashboard-serviceaccount
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: backend
+        image: k8s-dashboard-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8001
+          name: http
+          protocol: TCP
+        env:
+        - name: MONGO_URL
+          value: "mongodb://admin:admin123@mongodb-service:27017/k8s_dashboard?authSource=admin"
+        - name: DB_NAME
+          value: "k8s_dashboard"
+        - name: JWT_SECRET
+          valueFrom:
+            secretRef:
+              name: k8s-dashboard-secrets
+              key: jwt-secret
+        - name: CORS_ORIGINS
+          value: "*"
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-dashboard-backend-service
+  namespace: default
+  labels:
+    app: k8s-dashboard
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: k8s-dashboard
+    component: backend
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-dashboard-frontend
+  namespace: default
+  labels:
+    app: k8s-dashboard
+    component: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: k8s-dashboard
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: k8s-dashboard
+        component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: frontend
+        image: k8s-dashboard-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: REACT_APP_BACKEND_URL
+          value: "http://k8s-dashboard-backend-service:8001"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-dashboard-frontend-service
+  namespace: default
+  labels:
+    app: k8s-dashboard
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: k8s-dashboard
+    component: frontend
+
+---
+# Application Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k8s-dashboard-secrets
+  namespace: default
+type: Opaque
+data:
+  jwt-secret: azhzLXNyZS1kYXNoYm9hcmQtc3VwZXItc2VjcmV0LWp3dC1rZXktY2hhbmdlLWluLXByb2R1Y3Rpb24=  # base64 encoded
+
+---
+# Ingress (Optional - configure based on your ingress controller)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: k8s-dashboard-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # Optional: for SSL
+spec:
+  tls:
+  - hosts:
+    - k8s-dashboard.yourdomain.com
+    secretName: k8s-dashboard-tls
+  rules:
+  - host: k8s-dashboard.yourdomain.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: k8s-dashboard-backend-service
+            port:
+              number: 8001
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: k8s-dashboard-frontend-service
+            port:
+              number: 3000
+
+---
+# Pod Disruption Budget for Backend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: k8s-dashboard-backend-pdb
+  namespace: default
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: k8s-dashboard
+      component: backend
+
+---
+# Pod Disruption Budget for Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: k8s-dashboard-frontend-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: k8s-dashboard
+      component: frontend
+
+---
+# Network Policy (Optional - for enhanced security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: k8s-dashboard-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: k8s-dashboard
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 3000
+  egress:
+  - to: []  # Allow all egress for Kubernetes API access
+    ports:
+    - protocol: TCP
+      port: 443  # Kubernetes API server
+    - protocol: TCP
+      port: 6443  # Alternative Kubernetes API port
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017  # MongoDB
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 53  # DNS
+    - protocol: UDP
+      port: 53  # DNS
