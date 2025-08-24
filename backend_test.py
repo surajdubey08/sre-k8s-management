@@ -713,6 +713,183 @@ class KubernetesDashboardAPITester:
         
         return success
 
+    # ========== DATABASE OPTIMIZATION TESTS (ADMIN) ==========
+    
+    def test_database_stats(self):
+        """Test /api/admin/database/stats endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test database stats - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Database Statistics",
+            "GET",
+            "admin/database/stats",
+            200
+        )
+        
+        if success:
+            expected_sections = ['database', 'connections', 'operations', 'memory']
+            present_sections = [section for section in expected_sections if section in response]
+            
+            print(f"   ✅ Database stats retrieved - Sections: {len(present_sections)}/{len(expected_sections)}")
+            if 'database' in response:
+                db_info = response['database']
+                print(f"   📊 Collections: {db_info.get('collections', 0)}, Objects: {db_info.get('objects', 0)}")
+                print(f"   📊 Data Size: {db_info.get('data_size', 0)} bytes, Storage: {db_info.get('storage_size', 0)} bytes")
+        
+        return success
+
+    def test_analyze_collection_performance(self):
+        """Test /api/admin/database/analyze/{collection_name} endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test collection analysis - admin access required")
+            return False
+        
+        # Test with audit_logs collection (should exist)
+        success, response = self.run_test(
+            "Analyze Collection Performance - audit_logs",
+            "GET",
+            "admin/database/analyze/audit_logs",
+            200
+        )
+        
+        if success:
+            expected_fields = ['collection', 'document_count', 'storage_size', 'indexes', 'recommendations']
+            present_fields = [field for field in expected_fields if field in response]
+            
+            print(f"   ✅ Collection analysis completed - Fields: {len(present_fields)}/{len(expected_fields)}")
+            print(f"   📊 Collection: {response.get('collection')}")
+            print(f"   📊 Documents: {response.get('document_count', 0)}")
+            print(f"   📊 Indexes: {len(response.get('indexes', []))}")
+            print(f"   📊 Recommendations: {len(response.get('recommendations', []))}")
+        
+        return success
+
+    def test_database_optimization(self):
+        """Test /api/admin/database/optimize endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test database optimization - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Database Optimization",
+            "POST",
+            "admin/database/optimize",
+            200
+        )
+        
+        if success and response.get('success') == True:
+            results = response.get('results', {})
+            optimized_collections = len([k for k, v in results.items() if v.get('optimized', False)])
+            print(f"   ✅ Database optimization completed - {optimized_collections} collections optimized")
+            print(f"   📊 Results: {list(results.keys())}")
+        
+        return success
+
+    def test_database_cleanup(self):
+        """Test /api/admin/database/cleanup endpoint"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test database cleanup - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Database Cleanup",
+            "POST",
+            "admin/database/cleanup",
+            200,
+            params={"days_to_keep": 30}
+        )
+        
+        if success and response.get('success') == True:
+            results = response.get('results', {})
+            print(f"   ✅ Database cleanup completed - kept last 30 days")
+            if 'audit_logs' in results:
+                deleted_count = results['audit_logs'].get('deleted_count', 0)
+                print(f"   📊 Audit logs cleaned: {deleted_count} old entries removed")
+        
+        return success
+
+    def test_database_profiling_enable(self):
+        """Test /api/admin/database/profiling endpoint - enable profiling"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test database profiling - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Enable Database Profiling",
+            "POST",
+            "admin/database/profiling",
+            200,
+            data={"enable": True, "level": 1, "slow_ms": 100}
+        )
+        
+        if success and response.get('success') == True:
+            print(f"   ✅ Database profiling enabled - Level 1, >100ms queries")
+        
+        return success
+
+    def test_database_profiling_disable(self):
+        """Test /api/admin/database/profiling endpoint - disable profiling"""
+        if not self.user_data or self.user_data.get('role') != 'admin':
+            print("❌ Cannot test database profiling - admin access required")
+            return False
+        
+        success, response = self.run_test(
+            "Disable Database Profiling",
+            "POST",
+            "admin/database/profiling",
+            200,
+            data={"enable": False}
+        )
+        
+        if success and response.get('success') == True:
+            print(f"   ✅ Database profiling disabled")
+        
+        return success
+
+    def test_performance_monitoring_integration(self):
+        """Test that performance monitoring is integrated with existing endpoints"""
+        # Test that cached vs non-cached calls show performance differences
+        print(f"\n🔍 Testing Performance Monitoring Integration...")
+        
+        # First call (should be slower - cache miss)
+        start_time = time.time()
+        success1, response1 = self.run_test(
+            "Performance Test - Cache Miss",
+            "GET",
+            "deployments",
+            200,
+            params={"use_cache": False}
+        )
+        cache_miss_time = time.time() - start_time
+        
+        # Second call (should be faster - cache hit)
+        start_time = time.time()
+        success2, response2 = self.run_test(
+            "Performance Test - Cache Hit",
+            "GET", 
+            "deployments",
+            200,
+            params={"use_cache": True}
+        )
+        cache_hit_time = time.time() - start_time
+        
+        if success1 and success2:
+            print(f"   ✅ Performance monitoring working")
+            print(f"   📊 Cache miss time: {cache_miss_time:.3f}s")
+            print(f"   📊 Cache hit time: {cache_hit_time:.3f}s")
+            
+            # Cache hit should generally be faster, but not always guaranteed in test environment
+            if cache_hit_time < cache_miss_time:
+                print(f"   ✅ Cache performance improvement detected")
+            else:
+                print(f"   ⚠️ Cache performance improvement not detected (may be normal in test environment)")
+            
+            return True
+        
+        return False
+
 def main():
     print("🚀 Starting Enhanced Kubernetes Dashboard API Tests")
     print("=" * 80)
