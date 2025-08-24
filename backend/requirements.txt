@@ -30,3 +30,6 @@ deepdiff>=7.0.1
 websockets>=14.1
 redis>=5.2.1
 aiofiles>=24.1.0
+google-auth>=2.40.0
+google-auth-oauthlib>=1.2.0
+cachetools>=5.5.0

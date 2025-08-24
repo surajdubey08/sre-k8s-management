@@ -1,25 +1,20 @@
 import React, { useState, useMemo, useCallback, memo } from 'react';
-import { FixedSizeList as List } from 'react-window';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import EnhancedConfigurationEditor from './EnhancedConfigurationEditor';
-import ConfigurationEditor from './ConfigurationEditor';
 import { 
-  Container, Layers, Scale, CheckCircle, XCircle, 
-  AlertTriangle, Search, Filter 
+  Container, Layers, Search, Filter, Plus, Minus,
+  RotateCcw, CheckCircle, XCircle, AlertTriangle, Settings
 } from 'lucide-react';
 
-// Memoized resource item component for performance
-const ResourceItem = memo(({ 
+// Memoized resource card component for performance
+const ResourceCard = memo(({ 
   resource, 
   resourceType, 
-  index, 
-  style,
   onScaleDeployment,
   onConfigurationUpdated,
-  showEnhancedEditor,
-  onToggleEditor 
+  onRestartResource
 }) => {
   const getStatusColor = useCallback((status, total, ready) => {
     const percentage = total > 0 ? (ready / total) * 100 : 0;
@@ -62,119 +57,136 @@ const ResourceItem = memo(({
     }
   }, [resource.status, resourceType]);
 
+  const handleScaleUp = () => {
+    onScaleDeployment(resource.namespace, resource.name, resource.status.replicas + 1);
+  };
+
+  const handleScaleDown = () => {
+    onScaleDeployment(resource.namespace, resource.name, Math.max(0, resource.status.replicas - 1));
+  };
+
+  const handleRestart = () => {
+    if (onRestartResource) {
+      onRestartResource(resource.namespace, resource.name, resourceType);
+    }
+  };
+
   return (
-    <div style={style} className="px-2 py-1">
-      <Card className="resource-card h-full">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg text-white flex items-center space-x-2">
-              {resourceType === 'deployment' ? (
-                <Container className="h-5 w-5 text-cyan-400" />
-              ) : (
-                <Layers className="h-5 w-5 text-blue-400" />
+    <Card className="resource-card h-full hover:bg-slate-800/30 transition-colors border-slate-700 bg-slate-800/20">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg text-white flex items-center space-x-3">
+            {resourceType === 'deployment' ? (
+              <Container className="h-5 w-5 text-cyan-400" />
+            ) : (
+              <Layers className="h-5 w-5 text-blue-400" />
+            )}
+            <span className="truncate">{resource.name}</span>
+          </CardTitle>
+          {getStatusBadge(statusData.ready, statusData.total)}
+        </div>
+        <div className="text-sm flex items-center space-x-4">
+          <span className="text-slate-400">Namespace:</span>
+          <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
+            {resource.namespace}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Status Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center p-3 bg-slate-900/30 rounded-lg">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">
+              {resourceType === 'deployment' ? 'Replicas' : 'Ready'}
+            </p>
+            <p className={`text-lg font-bold font-mono ${getStatusColor(resource.status, statusData.total, statusData.ready)}`}>
+              {statusData.ready}/{statusData.total}
+            </p>
+          </div>
+          <div className="text-center p-3 bg-slate-900/30 rounded-lg">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">
+              {resourceType === 'deployment' ? 'Updated' : 'Current'}
+            </p>
+            <p className="text-lg font-bold font-mono text-slate-300">
+              {resourceType === 'deployment' ? statusData.updated : statusData.current}
+            </p>
+          </div>
+          <div className="text-center p-3 bg-slate-900/30 rounded-lg">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Available</p>
+            <p className="text-lg font-bold font-mono text-slate-300">{statusData.available || 0}</p>
+          </div>
+          <div className="text-center p-3 bg-slate-900/30 rounded-lg">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Age</p>
+            <p className="text-xs text-slate-300 font-mono">{formatDate(resource.created)}</p>
+          </div>
+        </div>
+
+        {/* Labels */}
+        {resource.labels && (
+          <div>
+            <p className="text-slate-400 text-sm mb-2 font-medium">Labels</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(resource.labels).slice(0, 3).map(([key, value]) => (
+                <Badge key={key} variant="outline" className="text-xs border-slate-600 text-slate-400">
+                  {key}: {value}
+                </Badge>
+              ))}
+              {Object.keys(resource.labels).length > 3 && (
+                <Badge variant="outline" className="text-xs border-slate-600 text-slate-500">
+                  +{Object.keys(resource.labels).length - 3}
+                </Badge>
               )}
-              <span className="truncate">{resource.name}</span>
-            </CardTitle>
-            {getStatusBadge(statusData.ready, statusData.total)}
-          </div>
-          <div className="text-sm">
-            <span className="text-slate-400">Namespace: </span>
-            <span className="text-slate-300">{resource.namespace}</span>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-slate-400">
-                {resourceType === 'deployment' ? 'Replicas' : 'Ready'}
-              </p>
-              <p className={`font-mono font-bold ${getStatusColor(resource.status, statusData.total, statusData.ready)}`}>
-                {statusData.ready}/{statusData.total}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400">
-                {resourceType === 'deployment' ? 'Updated' : 'Current'}
-              </p>
-              <p className="font-mono text-slate-300">
-                {resourceType === 'deployment' ? statusData.updated : statusData.current}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400">Available</p>
-              <p className="font-mono text-slate-300">{statusData.available || 0}</p>
-            </div>
-            <div>
-              <p className="text-slate-400">Created</p>
-              <p className="text-xs text-slate-400">{formatDate(resource.created)}</p>
             </div>
           </div>
+        )}
 
-          {resource.labels && (
-            <div>
-              <p className="text-slate-400 text-sm mb-2">Labels</p>
-              <div className="flex flex-wrap gap-1">
-                {Object.entries(resource.labels).slice(0, 3).map(([key, value]) => (
-                  <Badge key={key} variant="outline" className="text-xs border-slate-600 text-slate-400">
-                    {key}: {value}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
+        {/* Action Buttons */}
+        <div className="space-y-3 pt-2">
+          {/* Scaling Actions (only for deployments) */}
           {resourceType === 'deployment' && (
             <div className="flex space-x-2">
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="btn-secondary flex-1"
-                onClick={() => onScaleDeployment(resource.namespace, resource.name, resource.status.replicas + 1)}
+                className="flex-1 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                onClick={handleScaleUp}
               >
-                <Scale className="h-3 w-3 mr-1" />
+                <Plus className="h-4 w-4 mr-2" />
                 Scale Up
               </Button>
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="btn-secondary flex-1"
-                onClick={() => onScaleDeployment(resource.namespace, resource.name, Math.max(0, resource.status.replicas - 1))}
+                className="flex-1 hover:bg-red-500/10 hover:border-red-500/50"
+                onClick={handleScaleDown}
                 disabled={resource.status.replicas === 0}
               >
-                <Scale className="h-3 w-3 mr-1" />
+                <Minus className="h-4 w-4 mr-2" />
                 Scale Down
               </Button>
             </div>
           )}
           
-          <div className="pt-2">
-            <div className="flex space-x-2">
-              {showEnhancedEditor ? (
-                <EnhancedConfigurationEditor
-                  resource={resource}
-                  resourceType={resourceType}
-                  onConfigurationUpdated={onConfigurationUpdated}
-                />
-              ) : (
-                <ConfigurationEditor
-                  resource={resource}
-                  resourceType={resourceType}
-                  onConfigurationUpdated={onConfigurationUpdated}
-                />
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onToggleEditor(resource.name)}
-                className="text-xs"
-              >
-                {showEnhancedEditor ? 'Basic' : 'Enhanced'}
-              </Button>
-            </div>
+          {/* Management Actions */}
+          <div className="flex space-x-2">
+            <EnhancedConfigurationEditor
+              resource={resource}
+              resourceType={resourceType}
+              onConfigurationUpdated={onConfigurationUpdated}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestart}
+              className="flex-1 hover:bg-yellow-500/10 hover:border-yellow-500/50"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Restart
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 });
 
@@ -189,13 +201,11 @@ const OptimizedResourceList = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [namespaceFilter, setNamespaceFilter] = useState('');
-  const [showEnhancedEditor, setShowEnhancedEditor] = useState({});
 
-  const handleToggleEditor = useCallback((resourceName) => {
-    setShowEnhancedEditor(prev => ({
-      ...prev,
-      [resourceName]: !prev[resourceName]
-    }));
+  const handleRestartResource = useCallback(async (namespace, name, type) => {
+    // TODO: Implement restart functionality
+    console.log(`Restarting ${type} ${namespace}/${name}`);
+    // You can add the restart API call here
   }, []);
 
   const uniqueNamespaces = useMemo(() => {
@@ -219,10 +229,9 @@ const OptimizedResourceList = ({
       style={style}
       onScaleDeployment={onScaleDeployment}
       onConfigurationUpdated={onConfigurationUpdated}
-      showEnhancedEditor={showEnhancedEditor[filteredResources[index]?.name]}
-      onToggleEditor={handleToggleEditor}
+      onRestartResource={handleRestartResource}
     />
-  ), [filteredResources, resourceType, onScaleDeployment, onConfigurationUpdated, showEnhancedEditor, handleToggleEditor]);
+  ), [filteredResources, resourceType, onScaleDeployment, onConfigurationUpdated, handleRestartResource]);
 
   if (loading) {
     return (
@@ -286,17 +295,19 @@ const OptimizedResourceList = ({
         </Badge>
       </div>
 
-      {/* Virtualized Resource List */}
+      {/* Card Grid Layout */}
       {filteredResources.length > 0 ? (
-        <div className="h-96 w-full">
-          <List
-            height={384} // 96 * 4 (h-96 in pixels)
-            itemCount={filteredResources.length}
-            itemSize={280} // Approximate height of each resource card
-            className="scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600"
-          >
-            {renderResourceItem}
-          </List>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredResources.map((resource, index) => (
+            <ResourceCard
+              key={`${resource.namespace}-${resource.name}`}
+              resource={resource}
+              resourceType={resourceType}
+              onScaleDeployment={onScaleDeployment}
+              onConfigurationUpdated={onConfigurationUpdated}
+              onRestartResource={handleRestartResource}
+            />
+          ))}
         </div>
       ) : (
         <Card className="glass-effect text-center py-12">

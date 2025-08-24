@@ -141,7 +141,7 @@ class MockConfigurationManager:
                 "metadata": {
                     "name": "nginx-deployment",
                     "namespace": "default",
-                    "labels": {"app": "nginx"}
+                    "labels": {"app": "nginx", "version": "v1.20"}
                 },
                 "spec": {
                     "replicas": 3,
@@ -158,13 +158,60 @@ class MockConfigurationManager:
                     }
                 }
             },
+            "deployment:default:api-server": {
+                "apiVersion": "apps/v1", 
+                "kind": "Deployment",
+                "metadata": {
+                    "name": "api-server",
+                    "namespace": "default",
+                    "labels": {"app": "api-server", "tier": "backend", "version": "v2.1"}
+                },
+                "spec": {
+                    "replicas": 2,
+                    "selector": {"matchLabels": {"app": "api-server"}},
+                    "template": {
+                        "metadata": {"labels": {"app": "api-server"}},
+                        "spec": {
+                            "containers": [{
+                                "name": "api-server",
+                                "image": "node:16-alpine",
+                                "ports": [{"containerPort": 3000}],
+                                "env": [{"name": "NODE_ENV", "value": "production"}]
+                            }]
+                        }
+                    }
+                }
+            },
+            "deployment:production:redis": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment", 
+                "metadata": {
+                    "name": "redis",
+                    "namespace": "production",
+                    "labels": {"app": "redis", "tier": "cache"}
+                },
+                "spec": {
+                    "replicas": 1,
+                    "selector": {"matchLabels": {"app": "redis"}},
+                    "template": {
+                        "metadata": {"labels": {"app": "redis"}},
+                        "spec": {
+                            "containers": [{
+                                "name": "redis",
+                                "image": "redis:6.2-alpine",
+                                "ports": [{"containerPort": 6379}]
+                            }]
+                        }
+                    }
+                }
+            },
             "daemonset:kube-system:datadog-agent": {
                 "apiVersion": "apps/v1",
                 "kind": "DaemonSet",
                 "metadata": {
                     "name": "datadog-agent",
                     "namespace": "kube-system",
-                    "labels": {"app": "datadog-agent"}
+                    "labels": {"app": "datadog-agent", "component": "monitoring"}
                 },
                 "spec": {
                     "selector": {"matchLabels": {"app": "datadog-agent"}},
@@ -175,6 +222,28 @@ class MockConfigurationManager:
                                 "name": "datadog-agent",
                                 "image": "datadog/agent:latest",
                                 "env": [{"name": "DD_API_KEY", "value": "mock-key"}]
+                            }]
+                        }
+                    }
+                }
+            },
+            "daemonset:kube-system:node-exporter": {
+                "apiVersion": "apps/v1",
+                "kind": "DaemonSet",
+                "metadata": {
+                    "name": "node-exporter", 
+                    "namespace": "kube-system",
+                    "labels": {"app": "node-exporter", "component": "monitoring"}
+                },
+                "spec": {
+                    "selector": {"matchLabels": {"app": "node-exporter"}},
+                    "template": {
+                        "metadata": {"labels": {"app": "node-exporter"}},
+                        "spec": {
+                            "containers": [{
+                                "name": "node-exporter",
+                                "image": "prom/node-exporter:latest",
+                                "ports": [{"containerPort": 9100}]
                             }]
                         }
                     }
@@ -461,17 +530,29 @@ class EnhancedKubernetesService:
                 return cached
         
         if not self.available:
-            # Mock data for non-k8s environments
-            mock_data = [
-                ResourceInfo(
-                    name="nginx-deployment",
-                    namespace="default",
-                    created="2024-01-01T10:00:00Z",
-                    status={"replicas": 3, "ready_replicas": 3, "updated_replicas": 3, "available_replicas": 3},
-                    labels={"app": "nginx"},
-                    annotations={}
-                )
-            ]
+            # Mock data for non-k8s environments - Generate from configs
+            mock_data = []
+            for key, config in self.config_manager.mock_configs.items():
+                if key.startswith("deployment:"):
+                    _, namespace, name = key.split(":")
+                    replicas = config["spec"]["replicas"]
+                    # Simulate some deployments having issues
+                    ready_replicas = replicas if name != "api-server" else replicas - 1
+                    
+                    mock_data.append(ResourceInfo(
+                        name=name,
+                        namespace=namespace,
+                        created="2024-01-01T10:00:00Z",
+                        status={
+                            "replicas": replicas, 
+                            "ready_replicas": ready_replicas, 
+                            "updated_replicas": replicas, 
+                            "available_replicas": ready_replicas
+                        },
+                        labels=config["metadata"]["labels"],
+                        annotations={}
+                    ))
+            
             if use_cache:
                 await k8s_cache.set_deployments(mock_data, namespace=namespace, label_selector=label_selector)
             return mock_data
@@ -519,17 +600,30 @@ class EnhancedKubernetesService:
                 return cached
         
         if not self.available:
-            # Mock data for non-k8s environments
-            mock_data = [
-                ResourceInfo(
-                    name="datadog-agent",
-                    namespace="kube-system",
-                    created="2024-01-01T09:00:00Z",
-                    status={"desired_number_scheduled": 3, "current_number_scheduled": 3, "number_ready": 3, "updated_number_scheduled": 3, "number_available": 3},
-                    labels={"app": "datadog-agent"},
-                    annotations={}
-                )
-            ]
+            # Mock data for non-k8s environments - Generate from configs  
+            mock_data = []
+            for key, config in self.config_manager.mock_configs.items():
+                if key.startswith("daemonset:"):
+                    _, namespace, name = key.split(":")
+                    # Simulate 3 nodes in the cluster
+                    desired = 3
+                    ready = 3 if name != "node-exporter" else 2  # Simulate one having issues
+                    
+                    mock_data.append(ResourceInfo(
+                        name=name,
+                        namespace=namespace,
+                        created="2024-01-01T09:00:00Z",
+                        status={
+                            "desired_number_scheduled": desired, 
+                            "current_number_scheduled": desired, 
+                            "number_ready": ready, 
+                            "updated_number_scheduled": desired, 
+                            "number_available": ready
+                        },
+                        labels=config["metadata"]["labels"],
+                        annotations={}
+                    ))
+            
             if use_cache:
                 await k8s_cache.set_daemonsets(mock_data, namespace=namespace, label_selector=label_selector)
             return mock_data
@@ -601,8 +695,14 @@ class EnhancedKubernetesService:
                 resource_enum, namespace, name, config, user, dry_run
             )
             
-            # Invalidate cache for this resource
+            # Invalidate cache for this resource AND the list caches
             await k8s_cache.invalidate_resource(resource_type, namespace, name)
+            
+            # Also invalidate the deployment/daemonset list caches
+            if resource_type == 'deployment':
+                await k8s_cache.invalidate_by_pattern('deployments*')
+            elif resource_type == 'daemonset':
+                await k8s_cache.invalidate_by_pattern('daemonsets*')
             
             # Broadcast real-time update
             await websocket_manager.broadcast({
