@@ -234,9 +234,22 @@ async def update_resource_config(
             }
         )
         
-        # Invalidate cache in background if not dry run
+        # Invalidate cache in background if not dry run  
         if not config_request.dry_run and result.success:
             background_tasks.add_task(k8s_cache.invalidate_resource, resource_type, namespace, name)
+            # Also invalidate resource lists to ensure frontend refresh
+            background_tasks.add_task(k8s_cache.invalidate_by_pattern, f"{resource_type}*")
+            # Broadcast WebSocket update for real-time refresh
+            await websocket_manager.broadcast({
+                "type": "resource_updated",
+                "data": {
+                    "resource_type": resource_type,
+                    "name": name,
+                    "namespace": namespace,
+                    "user": current_user.username,
+                    "timestamp": result.timestamp
+                }
+            })
         
         return enhanced_result
     except Exception as e:
