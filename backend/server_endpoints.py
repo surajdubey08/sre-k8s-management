@@ -142,7 +142,7 @@ async def get_resource_config(
     resource_type: str,
     namespace: str,
     name: str,
-    use_cache: bool = True,
+    use_cache: bool = False,  # DISABLED CACHE for fresh config data
     current_user: User = Depends(get_current_user)
 ):
     """Get resource configuration for editing"""
