@@ -19,6 +19,7 @@ import asyncio
 import re
 import json
 import websockets
+import copy
 
 # Enhanced services
 from services.kubernetes_service_enhanced import (
