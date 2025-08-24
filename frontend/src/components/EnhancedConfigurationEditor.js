@@ -42,26 +42,46 @@ const EnhancedConfigurationEditor = ({
     if (!currentConfig) return;
     
     try {
+      let convertedConfig = null;
+      
       if (viewMode === 'json' && !currentConfig.trim().startsWith('{')) {
         // Convert YAML to JSON
         const yamlData = yaml.load(currentConfig);
-        const jsonConfig = JSON.stringify(yamlData, null, 2);
-        setCurrentConfig(jsonConfig);
+        convertedConfig = JSON.stringify(yamlData, null, 2);
       } else if (viewMode === 'yaml' && currentConfig.trim().startsWith('{')) {
         // Convert JSON to YAML
         const jsonData = JSON.parse(currentConfig);
-        const yamlConfig = yaml.dump(jsonData, { 
+        convertedConfig = yaml.dump(jsonData, { 
           indent: 2, 
           lineWidth: 120,
           noRefs: true 
         });
-        setCurrentConfig(yamlConfig);
+      }
+      
+      if (convertedConfig) {
+        setCurrentConfig(convertedConfig);
+        
+        // Recalculate changes after conversion using same logic as handleConfigChange
+        try {
+          const originalData = yaml.load(originalConfig);
+          let currentData;
+          if (viewMode === 'json') {
+            currentData = JSON.parse(convertedConfig);
+          } else {
+            currentData = yaml.load(convertedConfig);
+          }
+          const changed = JSON.stringify(originalData) !== JSON.stringify(currentData);
+          setHasChanges(changed);
+        } catch (error) {
+          // Fallback to string comparison
+          setHasChanges(convertedConfig !== originalConfig);
+        }
       }
     } catch (error) {
       console.warn('Auto-conversion failed:', error);
       // Don't show error toast for auto-conversion, just keep current content
     }
-  }, [viewMode]);
+  }, [viewMode, originalConfig]);
 
   const fetchConfiguration = async () => {
     setIsLoading(true);
