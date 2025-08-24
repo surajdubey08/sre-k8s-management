@@ -26,10 +26,10 @@ const PerformanceDashboard = () => {
   const [cacheStats, setCacheStats] = useState({});
   const [refreshInterval, setRefreshInterval] = useState(null);
 
-  const refreshStats = () => {
+  const refreshStats = useCallback(() => {
     setStats(getPerformanceStats());
     setCacheStats(getCacheStats());
-  };
+  }, [getPerformanceStats, getCacheStats]);
 
   useEffect(() => {
     refreshStats();
