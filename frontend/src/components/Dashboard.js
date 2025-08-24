@@ -269,33 +269,102 @@ const Dashboard = () => {
             </div>
 
             {/* Recent Activity */}
-            <Card className="glass-effect border-slate-700/50">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-emerald-400" />
-                  <span>Recent Activity</span>
-                </CardTitle>
-                <CardDescription>Latest operations and events from your cluster</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {auditLogs.slice(0, 5).map((log, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-2 h-2 rounded-full ${log.success ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
-                        <div>
-                          <p className="text-sm text-white font-medium">{log.operation}</p>
-                          <p className="text-xs text-slate-400">{log.resource} by {log.user}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="glass-effect border-slate-700/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Clock className="h-5 w-5 text-emerald-400" />
+                    <span>Recent Activity</span>
+                  </CardTitle>
+                  <CardDescription>Latest operations and events from your cluster</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {auditLogs.slice(0, 5).map((log, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-2 h-2 rounded-full ${log.success ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
+                          <div>
+                            <p className="text-sm text-white font-medium">{log.operation}</p>
+                            <p className="text-xs text-slate-400">{log.resource} by {log.user}</p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {formatDate(log.timestamp)}
                         </div>
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {formatDate(log.timestamp)}
-                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Real-time Updates */}
+              <Card className="glass-effect border-slate-700/50">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></div>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Zap className="h-5 w-5 text-cyan-400" />
+                        <span>Real-time Updates</span>
+                      </CardTitle>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    {realTimeUpdates.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={clearUpdates}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <CardDescription>
+                    Live events from WebSocket connection
+                    {connectionStats.connectionCount > 1 && (
+                      <span className="ml-2 text-cyan-400">
+                        (Reconnected {connectionStats.connectionCount - 1} times)
+                      </span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {realTimeUpdates.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
+                          isConnected ? 'bg-emerald-500/20' : 'bg-slate-500/20'
+                        }`}>
+                          {isConnected ? (
+                            <Wifi className="h-4 w-4 text-emerald-400" />
+                          ) : (
+                            <WifiOff className="h-4 w-4 text-slate-400" />
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-sm">
+                          {isConnected ? 'Waiting for real-time updates...' : 'WebSocket disconnected'}
+                        </p>
+                      </div>
+                    ) : (
+                      realTimeUpdates.slice(0, 10).map((update, index) => (
+                        <div key={index} className="p-2 bg-slate-800/20 rounded border-l-2 border-cyan-400">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-white font-medium">
+                              {update.type?.replace('_', ' ').toUpperCase() || 'UPDATE'}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {new Date().toLocaleTimeString()}
+                            </span>
+                          </div>
+                          {update.data && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              {JSON.stringify(update.data, null, 2).slice(0, 100)}
+                              {JSON.stringify(update.data).length > 100 && '...'}
+                            </p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Deployments Tab */}
