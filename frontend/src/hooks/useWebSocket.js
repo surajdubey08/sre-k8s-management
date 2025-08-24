@@ -120,7 +120,7 @@ const useWebSocket = (url, options = {}) => {
         toast.error('Failed to establish real-time connection');
       }
     }
-  }, [url, onMessage, onOpen, onClose, onError, reconnectAttempts, pingInterval, maxMessageHistory, showNotifications]);
+  }, [url]); // Only depend on url to reduce re-creation
 
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= reconnectAttempts) {
