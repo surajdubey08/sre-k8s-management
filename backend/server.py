@@ -869,6 +869,144 @@ async def scale_deployment(
         )
         raise
 
+@app.get("/api/deployments/{namespace}/{name}/config")
+async def get_deployment_config(
+    namespace: str,
+    name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get deployment configuration for editing"""
+    try:
+        service = get_k8s_service()
+        config = await service.get_deployment_config(namespace, name)
+        
+        await create_audit_log(
+            "get_deployment_config",
+            f"deployments/{namespace}/{name}",
+            current_user.username,
+            True
+        )
+        
+        return config
+    except Exception as e:
+        await create_audit_log(
+            "get_deployment_config",
+            f"deployments/{namespace}/{name}",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise
+
+@app.put("/api/deployments/{namespace}/{name}/config", response_model=ConfigurationUpdate)
+async def update_deployment_config(
+    namespace: str,
+    name: str,
+    config_request: ResourceConfiguration,
+    current_user: User = Depends(get_current_user)
+):
+    """Update deployment configuration"""
+    # Validate inputs
+    if not re.match(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$', namespace):
+        raise HTTPException(status_code=400, detail="Invalid namespace format")
+    
+    if not re.match(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$', name):
+        raise HTTPException(status_code=400, detail="Invalid deployment name format")
+    
+    try:
+        service = get_k8s_service()
+        result = await service.update_deployment_config(
+            namespace, name, config_request.configuration, current_user.username
+        )
+        
+        await create_audit_log(
+            "update_deployment_config",
+            f"deployments/{namespace}/{name}",
+            current_user.username,
+            True,
+            {"changes": config_request.configuration}
+        )
+        
+        return result
+    except Exception as e:
+        await create_audit_log(
+            "update_deployment_config",
+            f"deployments/{namespace}/{name}",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise
+
+@app.get("/api/daemonsets/{namespace}/{name}/config")
+async def get_daemonset_config(
+    namespace: str,
+    name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get daemonset configuration for editing"""
+    try:
+        service = get_k8s_service()
+        config = await service.get_daemonset_config(namespace, name)
+        
+        await create_audit_log(
+            "get_daemonset_config",
+            f"daemonsets/{namespace}/{name}",
+            current_user.username,
+            True
+        )
+        
+        return config
+    except Exception as e:
+        await create_audit_log(
+            "get_daemonset_config",
+            f"daemonsets/{namespace}/{name}",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise
+
+@app.put("/api/daemonsets/{namespace}/{name}/config", response_model=ConfigurationUpdate)
+async def update_daemonset_config(
+    namespace: str,
+    name: str,
+    config_request: ResourceConfiguration,
+    current_user: User = Depends(get_current_user)
+):
+    """Update daemonset configuration"""
+    # Validate inputs
+    if not re.match(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$', namespace):
+        raise HTTPException(status_code=400, detail="Invalid namespace format")
+    
+    if not re.match(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$', name):
+        raise HTTPException(status_code=400, detail="Invalid deployment name format")
+    
+    try:
+        service = get_k8s_service()
+        result = await service.update_daemonset_config(
+            namespace, name, config_request.configuration, current_user.username
+        )
+        
+        await create_audit_log(
+            "update_daemonset_config",
+            f"daemonsets/{namespace}/{name}",
+            current_user.username,
+            True,
+            {"changes": config_request.configuration}
+        )
+        
+        return result
+    except Exception as e:
+        await create_audit_log(
+            "update_daemonset_config",
+            f"daemonsets/{namespace}/{name}",
+            current_user.username,
+            False,
+            {"error": str(e)}
+        )
+        raise
+
 @app.get("/api/audit-logs", response_model=List[AuditLog])
 async def get_audit_logs(
     limit: int = 100,
