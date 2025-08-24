@@ -1,16 +1,22 @@
 import requests
 import sys
 import json
+import websocket
+import threading
+import time
 from datetime import datetime
 
 class KubernetesDashboardAPITester:
     def __init__(self, base_url="https://kube-updater.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
+        self.ws_url = f"{base_url.replace('https://', 'wss://').replace('http://', 'ws://')}/ws"
         self.token = None
         self.user_data = None
         self.tests_run = 0
         self.tests_passed = 0
+        self.websocket_messages = []
+        self.ws_connection = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
