@@ -62,28 +62,12 @@ const Dashboard = memo(() => {
     try {
       setRefreshing(true);
       
-      // Use performance-optimized API calls with caching
+      // Simple API calls without caching
       const [statsRes, deploymentsRes, daemonsetsRes, auditRes] = await Promise.all([
-        optimizedApiCall(
-          () => axios.get('/dashboard/stats'),
-          'dashboard-stats',
-          30000 // Cache for 30 seconds
-        ),
-        optimizedApiCall(
-          () => axios.get('/deployments'),
-          'deployments-list',
-          60000 // Cache for 1 minute
-        ),
-        optimizedApiCall(
-          () => axios.get('/daemonsets'),
-          'daemonsets-list',
-          60000 // Cache for 1 minute
-        ),
-        optimizedApiCall(
-          () => axios.get('/audit-logs?limit=50'),
-          'audit-logs',
-          30000 // Cache for 30 seconds
-        )
+        simpleApiCall(() => axios.get('/dashboard/stats')),
+        simpleApiCall(() => axios.get('/deployments')),
+        simpleApiCall(() => axios.get('/daemonsets')),
+        simpleApiCall(() => axios.get('/audit-logs?limit=50'))
       ]);
 
       setDashboardStats(statsRes.data);
