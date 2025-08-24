@@ -184,7 +184,7 @@ const ConfigurationEditor = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-6xl max-h-[90vh] glass-effect border-slate-700">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col glass-effect border-slate-700">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
