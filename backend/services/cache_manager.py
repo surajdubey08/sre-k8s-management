@@ -61,12 +61,17 @@ class KubernetesCacheManager:
             'invalidations': 0
         }
         self._cleanup_task = None
-        self._start_cleanup_task()
+        self._cleanup_started = False
 
     def _start_cleanup_task(self):
         """Start background cleanup task"""
-        if self._cleanup_task is None:
-            self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+        if self._cleanup_task is None and not self._cleanup_started:
+            try:
+                self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+                self._cleanup_started = True
+            except RuntimeError:
+                # No event loop running, will start later
+                pass
 
     async def _periodic_cleanup(self):
         """Periodic cleanup of expired entries"""
