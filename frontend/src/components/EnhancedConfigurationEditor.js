@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';
 import ReactDiffViewer from 'react-diff-viewer-continued';
@@ -9,19 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
+import { Separator } from './ui/separator';
 import { toast } from 'sonner';
 import { 
   Settings, Save, Eye, Code, FileText, AlertTriangle, 
-  CheckCircle, X, RotateCcw, Zap, PlayCircle, Pause,
-  Activity, Clock, History, Shield
+  CheckCircle, X, RotateCcw, Zap, Play, TestTube,
+  Clock, User, GitBranch, History, Shield
 } from 'lucide-react';
 import axios from 'axios';
 
 const EnhancedConfigurationEditor = ({ 
   resource, 
   resourceType, 
-  onConfigurationUpdated,
-  enableRealTimeUpdates = true
+  onConfigurationUpdated 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [originalConfig, setOriginalConfig] = useState('');
@@ -29,76 +29,20 @@ const EnhancedConfigurationEditor = ({
   const [viewMode, setViewMode] = useState('yaml'); // yaml, json, diff
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [validationErrors, setValidationErrors] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
   const [dryRun, setDryRun] = useState(true);
-  const [previewResult, setPreviewResult] = useState(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [websocket, setWebsocket] = useState(null);
-  const [realTimeUpdates, setRealTimeUpdates] = useState([]);
-  const [rollbackHistory, setRollbackHistory] = useState([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    if (enableRealTimeUpdates && isOpen) {
-      const ws = new WebSocket(process.env.REACT_APP_BACKEND_URL?.replace('http', 'ws') + '/ws');
-      
-      ws.onopen = () => {
-        console.log('WebSocket connected for real-time configuration updates');
-        setWebsocket(ws);
-      };
-      
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'resource_updated' && 
-            message.data.resource_type === resourceType &&
-            message.data.namespace === resource.namespace &&
-            message.data.name === resource.name) {
-          
-          setRealTimeUpdates(prev => [...prev, {
-            timestamp: new Date().toISOString(),
-            message: `Configuration updated by ${message.data.user}`,
-            type: message.data.success ? 'success' : 'error'
-          }]);
-          
-          // Optionally refresh configuration if updated by another user
-          if (message.data.user !== getCurrentUser()) {
-            toast.info('Configuration updated by another user. Click refresh to see changes.');
-          }
-        }
-      };
-      
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        setWebsocket(null);
-      };
-      
-      return () => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      };
-    }
-  }, [isOpen, enableRealTimeUpdates, resourceType, resource.namespace, resource.name]);
-
-  const getCurrentUser = () => {
-    // Get current user from auth context or localStorage
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.username || 'unknown';
-  };
+  const [validationResults, setValidationResults] = useState(null);
+  const [configDiff, setConfigDiff] = useState(null);
+  const [lastUpdateResult, setLastUpdateResult] = useState(null);
 
   const fetchConfiguration = async () => {
     setIsLoading(true);
     setValidationError('');
-    setValidationErrors([]);
     
     try {
-      const endpoint = `/${resourceType}/${resource.namespace}/${resource.name}/config`;
-      const response = await axios.get(endpoint);
-      
+      const response = await axios.get(`/${resourceType}/${resource.namespace}/${resource.name}/config`);
       const configYaml = yaml.dump(response.data, { 
         indent: 2, 
         lineWidth: 120,
@@ -108,6 +52,7 @@ const EnhancedConfigurationEditor = ({
       setOriginalConfig(configYaml);
       setCurrentConfig(configYaml);
       setHasChanges(false);
+      setLastUpdateResult(null);
     } catch (error) {
       console.error('Failed to fetch configuration:', error);
       toast.error(`Failed to load ${resourceType} configuration`);
@@ -117,59 +62,31 @@ const EnhancedConfigurationEditor = ({
     }
   };
 
-  const validateConfiguration = async (config) => {
-    if (!config) return [];
-    
-    try {
-      setIsValidating(true);
-      const parsedConfig = viewMode === 'yaml' ? yaml.load(config) : JSON.parse(config);
-      
-      const response = await axios.post('/validate-config', {
-        resource_type: resourceType,
-        config: parsedConfig
-      });
-      
-      return response.data.validation_errors || [];
-    } catch (error) {
-      console.error('Validation error:', error);
-      return [error.response?.data?.detail || error.message || 'Validation failed'];
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const handleConfigChange = useCallback(async (value) => {
+  const handleConfigChange = (value) => {
     setCurrentConfig(value || '');
-    setHasChanges(value !== originalConfig);
+    const changed = value !== originalConfig;
+    setHasChanges(changed);
     setValidationError('');
+    setValidationResults(null);
+    setConfigDiff(null);
     
-    // Validate YAML/JSON syntax
+    // Validate syntax
     try {
       if (viewMode === 'yaml') {
         yaml.load(value || '');
       } else if (viewMode === 'json') {
         JSON.parse(value || '{}');
       }
-      
-      // Debounced validation
-      const validationErrors = await validateConfiguration(value);
-      setValidationErrors(validationErrors);
     } catch (error) {
       setValidationError(`Invalid ${viewMode.toUpperCase()}: ${error.message}`);
-      setValidationErrors([]);
     }
-  }, [originalConfig, viewMode, resourceType]);
+  };
 
-  const handlePreview = async () => {
-    if (validationError || validationErrors.length > 0) {
-      toast.error('Please fix validation errors before previewing');
-      return;
-    }
+  const validateConfiguration = async () => {
+    if (validationError || !hasChanges) return;
 
-    setIsSaving(true);
-    
+    setIsValidating(true);
     try {
-      // Parse configuration based on current view mode
       let configData;
       if (viewMode === 'yaml') {
         configData = yaml.load(currentConfig);
@@ -177,83 +94,31 @@ const EnhancedConfigurationEditor = ({
         configData = JSON.parse(currentConfig);
       }
 
-      const endpoint = `/${resourceType}/${resource.namespace}/${resource.name}/config`;
-      
-      const response = await axios.put(endpoint, {
-        configuration: configData,
-        dry_run: true
-      });
+      const [validationResponse, diffResponse] = await Promise.all([
+        axios.post('/validate-config', {
+          resource_type: resourceType,
+          config: configData
+        }),
+        axios.post('/config-diff', {
+          original_config: yaml.load(originalConfig),
+          updated_config: configData
+        })
+      ]);
 
-      setPreviewResult(response.data);
-      setShowPreview(true);
-      toast.success('Preview generated successfully');
-    } catch (error) {
-      console.error('Failed to generate preview:', error);
-      toast.error(error.response?.data?.detail || 'Failed to generate preview');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      setValidationResults(validationResponse.data);
+      setConfigDiff(diffResponse.data);
 
-  const handleSave = async () => {
-    if (validationError || validationErrors.length > 0) {
-      toast.error('Please fix validation errors before saving');
-      return;
-    }
-
-    setIsSaving(true);
-    
-    try {
-      // Parse configuration based on current view mode
-      let configData;
-      if (viewMode === 'yaml') {
-        configData = yaml.load(currentConfig);
+      if (validationResponse.data.valid) {
+        toast.success('Configuration validated successfully');
       } else {
-        configData = JSON.parse(currentConfig);
+        toast.warning('Configuration has validation warnings');
       }
-
-      const endpoint = `/${resourceType}/${resource.namespace}/${resource.name}/config`;
-      
-      const response = await axios.put(endpoint, {
-        configuration: configData,
-        dry_run: false
-      });
-
-      if (response.data.rollback_key) {
-        setRollbackHistory(prev => [...prev, {
-          timestamp: new Date().toISOString(),
-          rollback_key: response.data.rollback_key,
-          message: response.data.message,
-          changes: response.data.applied_changes.length
-        }]);
-      }
-
-      toast.success(response.data.message);
-      
-      // Update the original config
-      setOriginalConfig(currentConfig);
-      setHasChanges(false);
-      setIsOpen(false);
-      
-      // Notify parent component
-      if (onConfigurationUpdated) {
-        onConfigurationUpdated();
-      }
-      
     } catch (error) {
-      console.error('Failed to save configuration:', error);
-      toast.error(error.response?.data?.detail || 'Failed to save configuration');
+      toast.error('Failed to validate configuration');
+      setValidationError(error.response?.data?.detail || 'Validation failed');
     } finally {
-      setIsSaving(false);
+      setIsValidating(false);
     }
-  };
-
-  const handleReset = () => {
-    setCurrentConfig(originalConfig);
-    setHasChanges(false);
-    setValidationError('');
-    setValidationErrors([]);
-    toast.info('Configuration reset to original');
   };
 
   const convertToJson = () => {
@@ -282,41 +147,117 @@ const EnhancedConfigurationEditor = ({
     }
   };
 
+  const handleSave = async () => {
+    if (validationError) {
+      toast.error('Please fix validation errors before saving');
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Parse configuration based on current view mode
+      let configData;
+      if (viewMode === 'yaml') {
+        configData = yaml.load(currentConfig);
+      } else {
+        configData = JSON.parse(currentConfig);
+      }
+
+      const response = await axios.put(`/${resourceType}/${resource.namespace}/${resource.name}/config`, {
+        configuration: configData,
+        dry_run: dryRun,
+        strategy: 'merge'
+      });
+
+      setLastUpdateResult(response.data);
+
+      if (response.data.success) {
+        if (dryRun) {
+          toast.success('Dry run completed successfully - no changes applied');
+        } else {
+          toast.success('Configuration updated successfully');
+          setOriginalConfig(currentConfig);
+          setHasChanges(false);
+        }
+      } else {
+        toast.error(response.data.message);
+      }
+      
+      // If not dry run and successful, notify parent and close
+      if (!dryRun && response.data.success) {
+        setIsOpen(false);
+        if (onConfigurationUpdated) {
+          onConfigurationUpdated();
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to save configuration:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save configuration');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setCurrentConfig(originalConfig);
+    setHasChanges(false);
+    setValidationError('');
+    setValidationResults(null);
+    setConfigDiff(null);
+    setLastUpdateResult(null);
+    toast.info('Configuration reset to original');
+  };
+
   const handleOpen = (open) => {
     setIsOpen(open);
     if (open) {
       fetchConfiguration();
-      setRealTimeUpdates([]);
     } else {
       // Reset state when closing
       setOriginalConfig('');
       setCurrentConfig('');
       setHasChanges(false);
       setValidationError('');
-      setValidationErrors([]);
-      setShowPreview(false);
-      setPreviewResult(null);
-      setRealTimeUpdates([]);
+      setValidationResults(null);
+      setConfigDiff(null);
+      setLastUpdateResult(null);
+      setDryRun(true);
     }
   };
 
-  const getValidationStatus = () => {
-    if (isValidating) return { color: 'text-blue-400', icon: Activity, text: 'Validating...' };
-    if (validationError) return { color: 'text-red-400', icon: X, text: 'Syntax Error' };
-    if (validationErrors.length > 0) return { color: 'text-orange-400', icon: AlertTriangle, text: 'Validation Issues' };
-    if (!hasChanges && currentConfig) return { color: 'text-emerald-400', icon: CheckCircle, text: 'Valid & Saved' };
-    if (hasChanges && !validationError && validationErrors.length === 0) return { color: 'text-cyan-400', icon: Eye, text: 'Valid Changes' };
-    return { color: 'text-slate-400', icon: Code, text: 'Ready' };
+  const getEditorTheme = () => {
+    return 'vs-dark';
   };
 
-  const validationStatus = getValidationStatus();
+  const getValidationStatusBadge = () => {
+    if (validationResults) {
+      if (validationResults.valid) {
+        return (
+          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Valid Configuration
+          </Badge>
+        );
+      } else {
+        return (
+          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Validation Issues
+          </Badge>
+        );
+      }
+    }
+    return null;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="btn-secondary">
           <Settings className="h-3 w-3 mr-1" />
-          Edit Config
+          Enhanced Config
         </Button>
       </DialogTrigger>
       
@@ -325,24 +266,27 @@ const EnhancedConfigurationEditor = ({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl text-white flex items-center space-x-2">
-                <Code className="h-5 w-5 text-cyan-400" />
+                <Shield className="h-5 w-5 text-cyan-400" />
                 <span>Enhanced Configuration Editor</span>
               </DialogTitle>
               <DialogDescription className="text-slate-400 mt-1">
-                {resource.name} ({resourceType}) in {resource.namespace} namespace
+                Advanced configuration management for {resource.name} in {resource.namespace} namespace
               </DialogDescription>
             </div>
             <div className="flex items-center space-x-2">
-              {websocket && (
-                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                  <Activity className="h-3 w-3 mr-1" />
-                  Live
+              {hasChanges && (
+                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Unsaved Changes
                 </Badge>
               )}
-              <Badge className={`border-opacity-30 ${validationStatus.color.replace('text-', 'bg-').replace('-400', '-500/20 text-').replace('-500/20 text-', '-400 border-').replace('-400 border-', '-500/30')}`}>
-                <validationStatus.icon className="h-3 w-3 mr-1" />
-                {validationStatus.text}
-              </Badge>
+              {validationError && (
+                <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                  <X className="h-3 w-3 mr-1" />
+                  Syntax Error
+                </Badge>
+              )}
+              {getValidationStatusBadge()}
             </div>
           </div>
         </DialogHeader>
@@ -354,116 +298,100 @@ const EnhancedConfigurationEditor = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Validation Errors */}
+            {/* Validation Error Alert */}
             {validationError && (
               <Alert className="border-red-500/50 bg-red-500/10">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
                 <AlertDescription className="text-red-400">
-                  <strong>Syntax Error:</strong> {validationError}
+                  {validationError}
                 </AlertDescription>
               </Alert>
             )}
 
-            {validationErrors.length > 0 && (
-              <Alert className="border-orange-500/50 bg-orange-500/10">
-                <AlertTriangle className="h-4 w-4 text-orange-400" />
-                <AlertDescription className="text-orange-400">
-                  <strong>Validation Issues:</strong>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    {validationErrors.map((error, index) => (
-                      <li key={index} className="text-sm">{error}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Real-time Updates */}
-            {realTimeUpdates.length > 0 && (
-              <Alert className="border-blue-500/50 bg-blue-500/10">
-                <Activity className="h-4 w-4 text-blue-400" />
-                <AlertDescription className="text-blue-400">
-                  <strong>Real-time Updates:</strong>
-                  <div className="mt-2 space-y-1">
-                    {realTimeUpdates.slice(-3).map((update, index) => (
-                      <div key={index} className="text-sm flex items-center space-x-2">
-                        <Clock className="h-3 w-3" />
-                        <span>{update.message}</span>
-                        <span className="text-xs text-slate-500">
-                          {new Date(update.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
+            {/* Validation Results */}
+            {validationResults && !validationResults.valid && (
+              <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                <AlertDescription className="text-yellow-400">
+                  <div className="space-y-1">
+                    <p className="font-medium">Configuration Validation Issues:</p>
+                    {validationResults.validation_errors.map((error, index) => (
+                      <p key={index} className="text-sm">• {error}</p>
                     ))}
                   </div>
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Enhanced Controls */}
-            <div className="flex items-center justify-between bg-slate-800/30 rounded-lg p-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={dryRun}
-                    onCheckedChange={setDryRun}
-                  />
-                  <span className="text-sm text-slate-300">Dry Run Mode</span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={showAdvanced}
-                    onCheckedChange={setShowAdvanced}
-                  />
-                  <span className="text-sm text-slate-300">Advanced Tools</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                {dryRun && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handlePreview}
-                    disabled={!!validationError || validationErrors.length > 0 || isSaving}
-                  >
-                    <PlayCircle className="h-3 w-3 mr-1" />
-                    Preview Changes
-                  </Button>
-                )}
-                
-                {showAdvanced && rollbackHistory.length > 0 && (
-                  <Button variant="outline" size="sm">
-                    <History className="h-3 w-3 mr-1" />
-                    History ({rollbackHistory.length})
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Preview Results */}
-            {showPreview && previewResult && (
-              <Card className="border-cyan-500/50 bg-cyan-500/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-cyan-400 flex items-center space-x-2">
-                    <Eye className="h-4 w-4" />
-                    <span>Preview Results</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            {/* Last Update Result */}
+            {lastUpdateResult && (
+              <Alert className={`border-${lastUpdateResult.success ? 'emerald' : 'red'}-500/50 bg-${lastUpdateResult.success ? 'emerald' : 'red'}-500/10`}>
+                <CheckCircle className={`h-4 w-4 text-${lastUpdateResult.success ? 'emerald' : 'red'}-400`} />
+                <AlertDescription className={`text-${lastUpdateResult.success ? 'emerald' : 'red'}-400`}>
                   <div className="space-y-2">
-                    <p className="text-sm text-slate-300">
-                      <strong>Changes:</strong> {previewResult.applied_changes?.length || 0} modifications detected
-                    </p>
-                    {previewResult.applied_changes?.slice(0, 5).map((change, index) => (
-                      <div key={index} className="text-xs bg-slate-800/50 rounded p-2">
-                        <span className="text-cyan-400">{change.field_path}:</span> {change.change_type}
+                    <p className="font-medium">{lastUpdateResult.message}</p>
+                    {lastUpdateResult.applied_changes.length > 0 && (
+                      <div>
+                        <p className="text-sm">Applied Changes:</p>
+                        {lastUpdateResult.applied_changes.slice(0, 3).map((change, index) => (
+                          <p key={index} className="text-xs font-mono">
+                            {change.field_path}: {change.change_type}
+                          </p>
+                        ))}
+                        {lastUpdateResult.applied_changes.length > 3 && (
+                          <p className="text-xs">...and {lastUpdateResult.applied_changes.length - 3} more changes</p>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </CardContent>
-              </Card>
+                </AlertDescription>
+              </Alert>
             )}
+
+            {/* Configuration Controls */}
+            <Card className="bg-slate-800/30 border-slate-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-white">Configuration Options</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="dry-run"
+                        checked={dryRun}
+                        onCheckedChange={setDryRun}
+                      />
+                      <label htmlFor="dry-run" className="text-sm text-slate-300">
+                        Dry Run Mode
+                      </label>
+                    </div>
+                    <Separator orientation="vertical" className="h-4" />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={validateConfiguration}
+                      disabled={!hasChanges || validationError || isValidating}
+                    >
+                      {isValidating ? (
+                        <div className="flex items-center space-x-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-cyan-400"></div>
+                          <span>Validating...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <TestTube className="h-3 w-3" />
+                          <span>Validate</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {dryRun ? 'Changes will be validated only' : 'Changes will be applied immediately'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Tabs for different views */}
             <Tabs value={viewMode} onValueChange={setViewMode}>
@@ -489,19 +417,28 @@ const EnhancedConfigurationEditor = ({
                     disabled={!hasChanges}
                   >
                     <Eye className="h-4 w-4 mr-2" />
-                    Diff
+                    Diff Preview
                   </TabsTrigger>
+                  {configDiff && (
+                    <TabsTrigger 
+                      value="changes"
+                      className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400"
+                    >
+                      <GitBranch className="h-4 w-4 mr-2" />
+                      Changes
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
                   {viewMode === 'yaml' && (
-                    <Button variant="outline" size="sm" onClick={convertToJson} disabled={!!validationError}>
+                    <Button variant="outline" size="sm" onClick={convertToJson} disabled={validationError}>
                       Convert to JSON
                     </Button>
                   )}
                   {viewMode === 'json' && (
-                    <Button variant="outline" size="sm" onClick={convertToYaml} disabled={!!validationError}>
+                    <Button variant="outline" size="sm" onClick={convertToYaml} disabled={validationError}>
                       Convert to YAML
                     </Button>
                   )}
@@ -518,9 +455,9 @@ const EnhancedConfigurationEditor = ({
                 <Card className="terminal-bg border-slate-700">
                   <CardContent className="p-0">
                     <Editor
-                      height="600px"
+                      height="500px"
                       language="yaml"
-                      theme="vs-dark"
+                      theme={getEditorTheme()}
                       value={currentConfig}
                       onChange={handleConfigChange}
                       options={{
@@ -532,8 +469,7 @@ const EnhancedConfigurationEditor = ({
                         folding: true,
                         formatOnType: true,
                         formatOnPaste: true,
-                        quickSuggestions: true,
-                        suggestOnTriggerCharacters: true
+                        automaticLayout: true
                       }}
                     />
                   </CardContent>
@@ -544,9 +480,9 @@ const EnhancedConfigurationEditor = ({
                 <Card className="terminal-bg border-slate-700">
                   <CardContent className="p-0">
                     <Editor
-                      height="600px"
+                      height="500px"
                       language="json"
-                      theme="vs-dark"
+                      theme={getEditorTheme()}
                       value={currentConfig}
                       onChange={handleConfigChange}
                       options={{
@@ -558,8 +494,7 @@ const EnhancedConfigurationEditor = ({
                         folding: true,
                         formatOnType: true,
                         formatOnPaste: true,
-                        quickSuggestions: true,
-                        suggestOnTriggerCharacters: true
+                        automaticLayout: true
                       }}
                     />
                   </CardContent>
@@ -569,7 +504,10 @@ const EnhancedConfigurationEditor = ({
               <TabsContent value="diff" className="mt-4">
                 <Card className="terminal-bg border-slate-700">
                   <CardHeader>
-                    <CardTitle className="text-sm text-white">Configuration Changes</CardTitle>
+                    <CardTitle className="text-sm text-white flex items-center space-x-2">
+                      <Eye className="h-4 w-4" />
+                      <span>Configuration Changes Preview</span>
+                    </CardTitle>
                     <CardDescription>Review changes before applying</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -577,7 +515,7 @@ const EnhancedConfigurationEditor = ({
                       oldValue={originalConfig}
                       newValue={currentConfig}
                       splitView={true}
-                      leftTitle="Original Configuration"
+                      leftTitle="Current Configuration"
                       rightTitle="Modified Configuration"
                       hideLineNumbers={false}
                       showDiffOnly={false}
@@ -606,28 +544,51 @@ const EnhancedConfigurationEditor = ({
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {configDiff && (
+                <TabsContent value="changes" className="mt-4">
+                  <Card className="terminal-bg border-slate-700">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-white flex items-center space-x-2">
+                        <GitBranch className="h-4 w-4" />
+                        <span>Detailed Change Analysis</span>
+                      </CardTitle>
+                      <CardDescription>AI-powered change analysis and impact assessment</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-slate-900/50 rounded-lg">
+                          <h4 className="text-sm font-medium text-white mb-2">Configuration Diff</h4>
+                          <pre className="text-xs text-slate-400 overflow-auto max-h-64">
+                            {JSON.stringify(configDiff.diff, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </Tabs>
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-              <div className="text-sm text-slate-400 flex items-center space-x-4">
+              <div className="text-sm text-slate-400 space-y-1">
                 {hasChanges ? (
-                  <span className="text-yellow-400 flex items-center space-x-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    <span>Unsaved changes</span>
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-3 w-3 text-yellow-400" />
+                    <span className="text-yellow-400">You have unsaved changes</span>
+                  </div>
                 ) : currentConfig ? (
-                  <span className="text-emerald-400 flex items-center space-x-1">
-                    <CheckCircle className="h-3 w-3" />
-                    <span>Configuration up to date</span>
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-3 w-3 text-emerald-400" />
+                    <span className="text-emerald-400">Configuration is synchronized</span>
+                  </div>
                 ) : null}
-                
                 {dryRun && (
-                  <span className="text-blue-400 flex items-center space-x-1">
-                    <Shield className="h-3 w-3" />
-                    <span>Safe mode enabled</span>
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <TestTube className="h-3 w-3 text-cyan-400" />
+                    <span className="text-cyan-400">Dry run mode enabled - changes will be validated only</span>
+                  </div>
                 )}
               </div>
               
@@ -640,19 +601,19 @@ const EnhancedConfigurationEditor = ({
                   Cancel
                 </Button>
                 <Button 
-                  onClick={dryRun ? handlePreview : handleSave}
-                  disabled={!hasChanges || !!validationError || validationErrors.length > 0 || isSaving}
+                  onClick={handleSave}
+                  disabled={!hasChanges || !!validationError || isSaving}
                   className="btn-primary"
                 >
                   {isSaving ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                      <span>{dryRun ? 'Previewing...' : 'Applying...'}</span>
+                      <span>{dryRun ? 'Validating...' : 'Applying...'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
-                      {dryRun ? <Eye className="h-3 w-3" /> : <Save className="h-3 w-3" />}
-                      <span>{dryRun ? 'Preview Changes' : 'Apply Changes'}</span>
+                      {dryRun ? <TestTube className="h-3 w-3" /> : <Save className="h-3 w-3" />}
+                      <span>{dryRun ? 'Dry Run' : 'Apply Changes'}</span>
                     </div>
                   )}
                 </Button>
