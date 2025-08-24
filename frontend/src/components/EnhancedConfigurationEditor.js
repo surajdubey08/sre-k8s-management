@@ -297,10 +297,10 @@ const EnhancedConfigurationEditor = ({
             <span className="ml-3 text-slate-400">Loading configuration...</span>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-col flex-1 min-h-0 space-y-4 overflow-hidden">
             {/* Validation Error Alert */}
             {validationError && (
-              <Alert className="border-red-500/50 bg-red-500/10">
+              <Alert className="border-red-500/50 bg-red-500/10 flex-shrink-0">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
                 <AlertDescription className="text-red-400">
                   {validationError}
@@ -310,7 +310,7 @@ const EnhancedConfigurationEditor = ({
 
             {/* Validation Results */}
             {validationResults && !validationResults.valid && (
-              <Alert className="border-yellow-500/50 bg-yellow-500/10">
+              <Alert className="border-yellow-500/50 bg-yellow-500/10 flex-shrink-0">
                 <AlertTriangle className="h-4 w-4 text-yellow-400" />
                 <AlertDescription className="text-yellow-400">
                   <div className="space-y-1">
@@ -325,7 +325,7 @@ const EnhancedConfigurationEditor = ({
 
             {/* Last Update Result */}
             {lastUpdateResult && (
-              <Alert className={`border-${lastUpdateResult.success ? 'emerald' : 'red'}-500/50 bg-${lastUpdateResult.success ? 'emerald' : 'red'}-500/10`}>
+              <Alert className={`border-${lastUpdateResult.success ? 'emerald' : 'red'}-500/50 bg-${lastUpdateResult.success ? 'emerald' : 'red'}-500/10 flex-shrink-0`}>
                 <CheckCircle className={`h-4 w-4 text-${lastUpdateResult.success ? 'emerald' : 'red'}-400`} />
                 <AlertDescription className={`text-${lastUpdateResult.success ? 'emerald' : 'red'}-400`}>
                   <div className="space-y-2">
@@ -349,7 +349,7 @@ const EnhancedConfigurationEditor = ({
             )}
 
             {/* Configuration Controls */}
-            <Card className="bg-slate-800/30 border-slate-700">
+            <Card className="bg-slate-800/30 border-slate-700 flex-shrink-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-white">Configuration Options</CardTitle>
               </CardHeader>
@@ -393,185 +393,202 @@ const EnhancedConfigurationEditor = ({
               </CardContent>
             </Card>
 
-            {/* Tabs for different views */}
-            <Tabs value={viewMode} onValueChange={setViewMode}>
-              <div className="flex items-center justify-between">
-                <TabsList className="bg-slate-800/50 border border-slate-700">
-                  <TabsTrigger 
-                    value="yaml" 
-                    className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    YAML
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="json"
-                    className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
-                  >
-                    <Code className="h-4 w-4 mr-2" />
-                    JSON
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="diff"
-                    className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400"
-                    disabled={!hasChanges}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Diff Preview
-                  </TabsTrigger>
-                  {configDiff && (
+            {/* Tabs for different views - Main scrollable content */}
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <Tabs value={viewMode} onValueChange={setViewMode} className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between flex-shrink-0 mb-4">
+                  <TabsList className="bg-slate-800/50 border border-slate-700">
                     <TabsTrigger 
-                      value="changes"
-                      className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400"
+                      value="yaml" 
+                      className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
                     >
-                      <GitBranch className="h-4 w-4 mr-2" />
-                      Changes
+                      <FileText className="h-4 w-4 mr-2" />
+                      YAML
                     </TabsTrigger>
-                  )}
-                </TabsList>
+                    <TabsTrigger 
+                      value="json"
+                      className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                    >
+                      <Code className="h-4 w-4 mr-2" />
+                      JSON
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="diff"
+                      className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400"
+                      disabled={!hasChanges}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Diff Preview
+                    </TabsTrigger>
+                    {configDiff && (
+                      <TabsTrigger 
+                        value="changes"
+                        className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400"
+                      >
+                        <GitBranch className="h-4 w-4 mr-2" />
+                        Changes
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
 
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-2">
-                  {viewMode === 'yaml' && (
-                    <Button variant="outline" size="sm" onClick={convertToJson} disabled={validationError}>
-                      Convert to JSON
-                    </Button>
-                  )}
-                  {viewMode === 'json' && (
-                    <Button variant="outline" size="sm" onClick={convertToYaml} disabled={validationError}>
-                      Convert to YAML
-                    </Button>
-                  )}
-                  {hasChanges && (
-                    <Button variant="outline" size="sm" onClick={handleReset}>
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Reset
-                    </Button>
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    {viewMode === 'yaml' && (
+                      <Button variant="outline" size="sm" onClick={convertToJson} disabled={validationError}>
+                        Convert to JSON
+                      </Button>
+                    )}
+                    {viewMode === 'json' && (
+                      <Button variant="outline" size="sm" onClick={convertToYaml} disabled={validationError}>
+                        Convert to YAML
+                      </Button>
+                    )}
+                    {hasChanges && (
+                      <Button variant="outline" size="sm" onClick={handleReset}>
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <TabsContent value="yaml" className="h-full m-0 data-[state=active]:flex">
+                    <Card className="terminal-bg border-slate-700 w-full flex flex-col">
+                      <CardContent className="p-0 flex-1 min-h-0">
+                        <Editor
+                          height="100%"
+                          language="yaml"
+                          theme={getEditorTheme()}
+                          value={currentConfig}
+                          onChange={handleConfigChange}
+                          options={{
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 13,
+                            lineNumbers: 'on',
+                            wordWrap: 'on',
+                            folding: true,
+                            formatOnType: true,
+                            formatOnPaste: true,
+                            automaticLayout: true,
+                            scrollbar: {
+                              vertical: 'auto',
+                              horizontal: 'auto'
+                            }
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="json" className="h-full m-0 data-[state=active]:flex">
+                    <Card className="terminal-bg border-slate-700 w-full flex flex-col">
+                      <CardContent className="p-0 flex-1 min-h-0">
+                        <Editor
+                          height="100%"
+                          language="json"
+                          theme={getEditorTheme()}
+                          value={currentConfig}
+                          onChange={handleConfigChange}
+                          options={{
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 13,
+                            lineNumbers: 'on',
+                            wordWrap: 'on',
+                            folding: true,
+                            formatOnType: true,
+                            formatOnPaste: true,
+                            automaticLayout: true,
+                            scrollbar: {
+                              vertical: 'auto',
+                              horizontal: 'auto'
+                            }
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="diff" className="h-full m-0 data-[state=active]:flex">
+                    <Card className="terminal-bg border-slate-700 w-full flex flex-col">
+                      <CardHeader className="flex-shrink-0">
+                        <CardTitle className="text-sm text-white flex items-center space-x-2">
+                          <Eye className="h-4 w-4" />
+                          <span>Configuration Changes Preview</span>
+                        </CardTitle>
+                        <CardDescription>Review changes before applying</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-1 min-h-0 overflow-hidden p-2">
+                        <div className="h-full w-full">
+                          <ReactDiffViewer
+                            oldValue={originalConfig}
+                            newValue={currentConfig}
+                            splitView={true}
+                            leftTitle="Current Configuration"
+                            rightTitle="Modified Configuration"
+                            hideLineNumbers={false}
+                            showDiffOnly={false}
+                            styles={{
+                              variables: {
+                                dark: {
+                                  diffViewerBackground: '#0f172a',
+                                  diffViewerColor: '#e2e8f0',
+                                  addedBackground: '#065f46',
+                                  addedColor: '#6ee7b7',
+                                  removedBackground: '#7f1d1d',
+                                  removedColor: '#fca5a5',
+                                  wordAddedBackground: '#059669',
+                                  wordRemovedBackground: '#dc2626',
+                                  addedGutterBackground: '#065f46',
+                                  removedGutterBackground: '#7f1d1d',
+                                  gutterBackground: '#1e293b',
+                                  gutterBackgroundDark: '#0f172a',
+                                  highlightBackground: '#374151',
+                                  highlightGutterBackground: '#374151'
+                                }
+                              },
+                              contentText: {
+                                fontSize: '12px'
+                              }
+                            }}
+                            useDarkTheme={true}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {configDiff && (
+                    <TabsContent value="changes" className="h-full m-0 data-[state=active]:flex">
+                      <Card className="terminal-bg border-slate-700 w-full flex flex-col">
+                        <CardHeader className="flex-shrink-0">
+                          <CardTitle className="text-sm text-white flex items-center space-x-2">
+                            <GitBranch className="h-4 w-4" />
+                            <span>Detailed Change Analysis</span>
+                          </CardTitle>
+                          <CardDescription>AI-powered change analysis and impact assessment</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 min-h-0 overflow-auto">
+                          <div className="space-y-4">
+                            <div className="p-4 bg-slate-900/50 rounded-lg">
+                              <h4 className="text-sm font-medium text-white mb-2">Configuration Diff</h4>
+                              <pre className="text-xs text-slate-400 overflow-auto max-h-full">
+                                {JSON.stringify(configDiff.diff, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
                   )}
                 </div>
-              </div>
-
-              <TabsContent value="yaml" className="mt-4">
-                <Card className="terminal-bg border-slate-700">
-                  <CardContent className="p-0">
-                    <Editor
-                      height="500px"
-                      language="yaml"
-                      theme={getEditorTheme()}
-                      value={currentConfig}
-                      onChange={handleConfigChange}
-                      options={{
-                        minimap: { enabled: false },
-                        scrollBeyondLastLine: false,
-                        fontSize: 13,
-                        lineNumbers: 'on',
-                        wordWrap: 'on',
-                        folding: true,
-                        formatOnType: true,
-                        formatOnPaste: true,
-                        automaticLayout: true
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="json" className="mt-4">
-                <Card className="terminal-bg border-slate-700">
-                  <CardContent className="p-0">
-                    <Editor
-                      height="500px"
-                      language="json"
-                      theme={getEditorTheme()}
-                      value={currentConfig}
-                      onChange={handleConfigChange}
-                      options={{
-                        minimap: { enabled: false },
-                        scrollBeyondLastLine: false,
-                        fontSize: 13,
-                        lineNumbers: 'on',
-                        wordWrap: 'on',
-                        folding: true,
-                        formatOnType: true,
-                        formatOnPaste: true,
-                        automaticLayout: true
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="diff" className="mt-4">
-                <Card className="terminal-bg border-slate-700">
-                  <CardHeader>
-                    <CardTitle className="text-sm text-white flex items-center space-x-2">
-                      <Eye className="h-4 w-4" />
-                      <span>Configuration Changes Preview</span>
-                    </CardTitle>
-                    <CardDescription>Review changes before applying</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ReactDiffViewer
-                      oldValue={originalConfig}
-                      newValue={currentConfig}
-                      splitView={true}
-                      leftTitle="Current Configuration"
-                      rightTitle="Modified Configuration"
-                      hideLineNumbers={false}
-                      showDiffOnly={false}
-                      styles={{
-                        variables: {
-                          dark: {
-                            diffViewerBackground: '#0f172a',
-                            diffViewerColor: '#e2e8f0',
-                            addedBackground: '#065f46',
-                            addedColor: '#6ee7b7',
-                            removedBackground: '#7f1d1d',
-                            removedColor: '#fca5a5',
-                            wordAddedBackground: '#059669',
-                            wordRemovedBackground: '#dc2626',
-                            addedGutterBackground: '#065f46',
-                            removedGutterBackground: '#7f1d1d',
-                            gutterBackground: '#1e293b',
-                            gutterBackgroundDark: '#0f172a',
-                            highlightBackground: '#374151',
-                            highlightGutterBackground: '#374151'
-                          }
-                        }
-                      }}
-                      useDarkTheme={true}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {configDiff && (
-                <TabsContent value="changes" className="mt-4">
-                  <Card className="terminal-bg border-slate-700">
-                    <CardHeader>
-                      <CardTitle className="text-sm text-white flex items-center space-x-2">
-                        <GitBranch className="h-4 w-4" />
-                        <span>Detailed Change Analysis</span>
-                      </CardTitle>
-                      <CardDescription>AI-powered change analysis and impact assessment</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="p-4 bg-slate-900/50 rounded-lg">
-                          <h4 className="text-sm font-medium text-white mb-2">Configuration Diff</h4>
-                          <pre className="text-xs text-slate-400 overflow-auto max-h-64">
-                            {JSON.stringify(configDiff.diff, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              )}
-            </Tabs>
+              </Tabs>
+            </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-700 flex-shrink-0">
               <div className="text-sm text-slate-400 space-y-1">
                 {hasChanges ? (
                   <div className="flex items-center space-x-2">
