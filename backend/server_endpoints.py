@@ -346,7 +346,8 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
             "websocket_connections": len(websocket_manager.active_connections)
         }
     except Exception as e:
-        logger.error(f"Failed to get dashboard stats: {e}")
+        # Log error for debugging
+        print(f"Failed to get dashboard stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve dashboard statistics")
 
 # Cache Management Endpoints (Admin only)
