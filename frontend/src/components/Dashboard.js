@@ -405,7 +405,7 @@ const Dashboard = memo(() => {
               resources={deployments}
               resourceType="deployment"
               onScaleDeployment={handleScaleDeployment}
-              onConfigurationUpdated={debouncedRefresh}
+              onConfigurationUpdated={handleConfigurationUpdated}
               loading={loading}
             />
           </TabsContent>
