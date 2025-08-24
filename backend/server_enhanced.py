@@ -257,11 +257,15 @@ class MockConfigurationManager:
         """Get mock configuration diff"""
         try:
             import deepdiff
-            diff = deepdiff.DeepDiff(original, updated, ignore_order=True, report_type='dict')
+            # Use compatible parameters for deepdiff
+            diff = deepdiff.DeepDiff(original, updated, ignore_order=True)
             return dict(diff)
         except ImportError:
             # Fallback simple diff
             return {"mock_diff": "DeepDiff not available, showing mock diff"}
+        except Exception as e:
+            # Handle deepdiff version compatibility issues
+            return {"mock_diff": f"DeepDiff error: {str(e)}", "has_changes": original != updated}
     
     def _deep_merge_dict(self, target: Dict, source: Dict) -> Dict:
         """Deep merge two dictionaries"""
