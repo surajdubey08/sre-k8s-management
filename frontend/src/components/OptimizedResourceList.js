@@ -222,7 +222,7 @@ const OptimizedResourceList = ({
   }, [resources, searchTerm, namespaceFilter]);
 
   const renderResourceItem = useCallback(({ index, style }) => (
-    <ResourceItem
+    <ResourceCard
       resource={filteredResources[index]}
       resourceType={resourceType}
       index={index}
