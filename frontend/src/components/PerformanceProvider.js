@@ -346,7 +346,13 @@ export const PerformanceProvider = ({ children }) => {
     };
   }, []);
 
-  const value = {
+  // Memoize the context functions to prevent infinite re-renders
+  const getPerformanceStats = useCallback(() => performanceMonitor.getStats(), [performanceMonitor]);
+  const getCacheStats = useCallback(() => clientCache.getStats(), [clientCache]);
+  const clearCache = useCallback(() => clientCache.clear(), [clientCache]);
+  const resetMetrics = useCallback(() => performanceMonitor.reset(), [performanceMonitor]);
+
+  const value = useMemo(() => ({
     performanceMonitor,
     clientCache,
     optimizedApiCall,
@@ -355,11 +361,24 @@ export const PerformanceProvider = ({ children }) => {
     setIsOptimizationEnabled,
     debounce,
     throttle,
-    getPerformanceStats: () => performanceMonitor.getStats(),
-    getCacheStats: () => clientCache.getStats(),
-    clearCache: () => clientCache.clear(),
-    resetMetrics: () => performanceMonitor.reset()
-  };
+    getPerformanceStats,
+    getCacheStats,
+    clearCache,
+    resetMetrics
+  }), [
+    performanceMonitor,
+    clientCache,
+    optimizedApiCall,
+    useRenderTiming,
+    isOptimizationEnabled,
+    setIsOptimizationEnabled,
+    debounce,
+    throttle,
+    getPerformanceStats,
+    getCacheStats,
+    clearCache,
+    resetMetrics
+  ]);
 
   return (
     <PerformanceContext.Provider value={value}>
