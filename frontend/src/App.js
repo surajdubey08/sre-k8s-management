@@ -123,6 +123,82 @@ const AuthProvider = ({ children }) => {
   );
 };
 
+const WebSocketProvider = ({ children }) => {
+  const { user } = useAuth();
+  const [realTimeUpdates, setRealTimeUpdates] = useState([]);
+  const [connectionStats, setConnectionStats] = useState({
+    connected: false,
+    connectionCount: 0,
+    lastMessage: null
+  });
+
+  // WebSocket connection with authentication check
+  const {
+    connectionState,
+    lastMessage,
+    messageHistory,
+    sendMessage,
+    isConnected,
+    isConnecting
+  } = useWebSocket(WS_URL, {
+    autoConnect: !!user,
+    showNotifications: true,
+    onMessage: (message) => {
+      console.log('Real-time update:', message);
+      
+      // Add to real-time updates
+      setRealTimeUpdates(prev => [message, ...prev.slice(0, 49)]);
+      
+      // Update connection stats
+      setConnectionStats(prev => ({
+        ...prev,
+        lastMessage: message,
+        connected: true
+      }));
+    },
+    onOpen: () => {
+      console.log('WebSocket connected');
+      setConnectionStats(prev => ({
+        ...prev,
+        connected: true,
+        connectionCount: prev.connectionCount + 1
+      }));
+    },
+    onClose: () => {
+      console.log('WebSocket disconnected');
+      setConnectionStats(prev => ({
+        ...prev,
+        connected: false
+      }));
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionStats(prev => ({
+        ...prev,
+        connected: false
+      }));
+    }
+  });
+
+  const wsValue = {
+    connectionState,
+    lastMessage,
+    messageHistory,
+    sendMessage,
+    isConnected,
+    isConnecting,
+    realTimeUpdates,
+    connectionStats,
+    clearUpdates: () => setRealTimeUpdates([])
+  };
+
+  return (
+    <WebSocketContext.Provider value={wsValue}>
+      {children}
+    </WebSocketContext.Provider>
+  );
+};
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
