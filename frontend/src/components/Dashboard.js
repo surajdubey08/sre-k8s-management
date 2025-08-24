@@ -36,9 +36,6 @@ const Dashboard = memo(() => {
   const simpleApiCall = useCallback(async (apiCall) => {
     return await apiCall();
   }, []);
-
-  // Simple function passthrough (no debouncing)
-  const noop = useCallback((func) => func, []);
   
   const [dashboardStats, setDashboardStats] = useState(null);
   const [deployments, setDeployments] = useState([]);
