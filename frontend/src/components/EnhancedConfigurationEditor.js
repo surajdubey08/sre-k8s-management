@@ -594,10 +594,10 @@ const EnhancedConfigurationEditor = ({
                   </TabsContent>
 
                   <TabsContent value="json" className="h-full m-0 data-[state=active]:flex">
-                    <Card className="terminal-bg border-slate-700 w-full flex flex-col">
-                      <CardContent className="p-0 flex-1 min-h-0">
+                    <Card className="terminal-bg border-slate-700 w-full flex flex-col min-h-[600px]">
+                      <CardContent className="p-0 flex-1 min-h-0 overflow-auto">
                         <Editor
-                          height="100%"
+                          height="600px"
                           language="json"
                           theme={getEditorTheme()}
                           value={currentConfig}
@@ -613,8 +613,10 @@ const EnhancedConfigurationEditor = ({
                             formatOnPaste: true,
                             automaticLayout: true,
                             scrollbar: {
-                              vertical: 'auto',
-                              horizontal: 'auto'
+                              vertical: 'visible',
+                              horizontal: 'visible',
+                              verticalScrollbarSize: 17,
+                              horizontalScrollbarSize: 17
                             },
                             selectOnLineNumbers: true,
                             mouseWheelZoom: true,
