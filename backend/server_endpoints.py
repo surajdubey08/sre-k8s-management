@@ -12,8 +12,9 @@ from server_enhanced import (
     app, get_enhanced_k8s_service, get_current_user, create_audit_log,
     User, ResourceInfo, EnhancedResourceConfiguration, EnhancedConfigurationResult,
     DeploymentScale, BatchOperationRequest, BatchOperationResult, AuditLog,
-    k8s_cache, cache_manager, websocket_manager, db
+    k8s_cache, cache_manager, websocket_manager, db, require_admin
 )
+from services.database_optimizer import DatabaseOptimizer
 
 # Enhanced Kubernetes Management Endpoints
 
