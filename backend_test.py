@@ -958,7 +958,7 @@ def main():
             if not result:
                 print(f"⚠️  Test '{test_name}' failed but continuing...")
                 # Mark critical tests
-                if any(keyword in test_name.lower() for keyword in ['config', 'batch', 'validate', 'diff', 'websocket']):
+                if any(keyword in test_name.lower() for keyword in ['config', 'batch', 'validate', 'diff', 'websocket', 'database', 'optimization', 'profiling']):
                     critical_failures.append(test_name)
         except Exception as e:
             print(f"💥 Test '{test_name}' crashed: {str(e)}")
