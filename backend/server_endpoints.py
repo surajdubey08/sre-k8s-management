@@ -393,9 +393,9 @@ async def clear_cache(
 
 @app.post("/api/admin/cache/refresh")
 async def refresh_cache(
+    background_tasks: BackgroundTasks,
     resource_type: Optional[str] = None,
     namespace: Optional[str] = None,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user)
 ):
     """Refresh cache by fetching fresh data"""
