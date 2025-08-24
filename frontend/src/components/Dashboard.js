@@ -57,14 +57,33 @@ const Dashboard = memo(() => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchDashboardData = async () => {
+  // Optimized data fetching with caching
+  const fetchDashboardData = useCallback(async () => {
     try {
       setRefreshing(true);
+      
+      // Use performance-optimized API calls with caching
       const [statsRes, deploymentsRes, daemonsetsRes, auditRes] = await Promise.all([
-        axios.get('/dashboard/stats'),
-        axios.get('/deployments'),
-        axios.get('/daemonsets'),
-        axios.get('/audit-logs?limit=50')
+        optimizedApiCall(
+          () => axios.get('/dashboard/stats'),
+          'dashboard-stats',
+          30000 // Cache for 30 seconds
+        ),
+        optimizedApiCall(
+          () => axios.get('/deployments'),
+          'deployments-list',
+          60000 // Cache for 1 minute
+        ),
+        optimizedApiCall(
+          () => axios.get('/daemonsets'),
+          'daemonsets-list',
+          60000 // Cache for 1 minute
+        ),
+        optimizedApiCall(
+          () => axios.get('/audit-logs?limit=50'),
+          'audit-logs',
+          30000 // Cache for 30 seconds
+        )
       ]);
 
       setDashboardStats(statsRes.data);
@@ -78,7 +97,7 @@ const Dashboard = memo(() => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [optimizedApiCall]);
 
   const handleScaleDeployment = async (namespace, name, replicas) => {
     try {
