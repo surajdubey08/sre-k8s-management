@@ -126,6 +126,152 @@ class KubernetesConfig:
 # Global Kubernetes config
 k8s_config = KubernetesConfig()
 
+# Mock Configuration Manager for non-k8s environments
+class MockConfigurationManager:
+    """Mock configuration manager for testing without Kubernetes"""
+    
+    def __init__(self):
+        self.mock_configs = {
+            "deployment:default:nginx-deployment": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {
+                    "name": "nginx-deployment",
+                    "namespace": "default",
+                    "labels": {"app": "nginx"}
+                },
+                "spec": {
+                    "replicas": 3,
+                    "selector": {"matchLabels": {"app": "nginx"}},
+                    "template": {
+                        "metadata": {"labels": {"app": "nginx"}},
+                        "spec": {
+                            "containers": [{
+                                "name": "nginx",
+                                "image": "nginx:1.20",
+                                "ports": [{"containerPort": 80}]
+                            }]
+                        }
+                    }
+                }
+            },
+            "daemonset:kube-system:datadog-agent": {
+                "apiVersion": "apps/v1",
+                "kind": "DaemonSet",
+                "metadata": {
+                    "name": "datadog-agent",
+                    "namespace": "kube-system",
+                    "labels": {"app": "datadog-agent"}
+                },
+                "spec": {
+                    "selector": {"matchLabels": {"app": "datadog-agent"}},
+                    "template": {
+                        "metadata": {"labels": {"app": "datadog-agent"}},
+                        "spec": {
+                            "containers": [{
+                                "name": "datadog-agent",
+                                "image": "datadog/agent:latest",
+                                "env": [{"name": "DD_API_KEY", "value": "mock-key"}]
+                            }]
+                        }
+                    }
+                }
+            }
+        }
+    
+    async def get_resource_configuration(self, resource_type, namespace: str, name: str):
+        """Get mock resource configuration"""
+        key = f"{resource_type.value}:{namespace}:{name}"
+        if key in self.mock_configs:
+            return copy.deepcopy(self.mock_configs[key])
+        else:
+            raise HTTPException(status_code=404, detail=f"Mock resource {key} not found")
+    
+    async def update_resource_configuration(self, resource_type, namespace: str, name: str, 
+                                          new_config: Dict[str, Any], user: str, dry_run: bool = False):
+        """Update mock resource configuration"""
+        from services.kubernetes_service_enhanced import ConfigurationResult, ConfigurationChange
+        
+        key = f"{resource_type.value}:{namespace}:{name}"
+        
+        # Mock validation
+        validation_errors = []
+        if 'spec' in new_config:
+            if resource_type.value == 'deployment' and 'replicas' in new_config['spec']:
+                replicas = new_config['spec']['replicas']
+                if not isinstance(replicas, int) or replicas < 0:
+                    validation_errors.append("Replicas must be a non-negative integer")
+        
+        # Mock changes calculation
+        changes = []
+        if key in self.mock_configs:
+            current_config = self.mock_configs[key]
+            if 'spec' in new_config and 'spec' in current_config:
+                if new_config['spec'].get('replicas') != current_config['spec'].get('replicas'):
+                    changes.append(ConfigurationChange(
+                        field_path="spec.replicas",
+                        old_value=current_config['spec'].get('replicas'),
+                        new_value=new_config['spec'].get('replicas'),
+                        change_type='modified'
+                    ))
+        
+        if not dry_run and not validation_errors:
+            # Update mock config
+            if key in self.mock_configs:
+                self.mock_configs[key] = self._deep_merge_dict(self.mock_configs[key], new_config)
+        
+        return ConfigurationResult(
+            success=len(validation_errors) == 0,
+            message="Mock configuration updated successfully" if len(validation_errors) == 0 else "Validation failed",
+            applied_changes=changes,
+            rollback_data=self.mock_configs.get(key),
+            validation_errors=validation_errors,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            user=user,
+            resource_version="mock-version-123"
+        )
+    
+    async def validate_configuration(self, resource_type, config: Dict[str, Any]) -> List[str]:
+        """Validate mock configuration"""
+        validation_errors = []
+        
+        if 'spec' in config:
+            if resource_type.value == 'deployment':
+                if 'replicas' in config['spec']:
+                    replicas = config['spec']['replicas']
+                    if not isinstance(replicas, int) or replicas < 0:
+                        validation_errors.append("Replicas must be a non-negative integer")
+                        
+                if 'selector' not in config['spec']:
+                    validation_errors.append("Deployment must have a selector")
+                    
+                if 'template' not in config['spec']:
+                    validation_errors.append("Deployment must have a pod template")
+        
+        return validation_errors
+    
+    def get_configuration_diff(self, original: Dict[str, Any], updated: Dict[str, Any]) -> Dict[str, Any]:
+        """Get mock configuration diff"""
+        try:
+            import deepdiff
+            diff = deepdiff.DeepDiff(original, updated, ignore_order=True, report_type='dict')
+            return dict(diff)
+        except ImportError:
+            # Fallback simple diff
+            return {"mock_diff": "DeepDiff not available, showing mock diff"}
+    
+    def _deep_merge_dict(self, target: Dict, source: Dict) -> Dict:
+        """Deep merge two dictionaries"""
+        result = copy.deepcopy(target)
+        
+        for key, value in source.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge_dict(result[key], value)
+            else:
+                result[key] = copy.deepcopy(value)
+                
+        return result
+
 # Enhanced Pydantic Models
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
