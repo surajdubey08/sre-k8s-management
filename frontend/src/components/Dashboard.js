@@ -7,6 +7,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner';
+import ConfigurationEditor from './ConfigurationEditor';
 import { 
   Shield, Server, Activity, Users, LogOut, RefreshCw, Settings, 
   Play, Square, BarChart3, Clock, AlertTriangle, CheckCircle, 
