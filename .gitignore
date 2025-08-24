@@ -31,7 +31,11 @@ dist/
 dist
 
 # Environment files (comprehensive coverage)
-
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *token.json*
 *credentials.json*
 
@@ -41,6 +45,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 dump.rdb
+*.log
 
 # System files
 .DS_Store
@@ -51,6 +56,8 @@ __pycache__/
 *pyc*
 venv/
 .venv/
+*.egg-info/
+.pytest_cache/
 
 # Development tools
 chainlit.md
@@ -63,6 +70,15 @@ chainlit.md
 
 # Data and databases
 agenthub/agents/youtube/db
+*.db
+*.sqlite
+*.sqlite3
+
+# Kubernetes related
+kubeconfig
+*.kubeconfig
+.kube/
+minikube/
 
 # Archive files and large assets
 **/*.zip
@@ -78,3 +94,21 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/ frontend/node_modules/.cache/default-development/0.pack
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Supervisor logs (optional - can be kept for debugging)
+# /var/log/supervisor/
