@@ -444,6 +444,14 @@ const Dashboard = () => {
                     <div className="text-xs text-slate-500">
                       Created: {formatDate(daemonset.created)}
                     </div>
+                    
+                    <div className="pt-2">
+                      <ConfigurationEditor
+                        resource={daemonset}
+                        resourceType="daemonset"
+                        onConfigurationUpdated={fetchDashboardData}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               ))}
