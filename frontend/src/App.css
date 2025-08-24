@@ -284,6 +284,49 @@
   }
 }
 
+/* Configuration Editor Modal Responsive Styles */
+@media (max-width: 1200px) {
+  [role="dialog"] {
+    max-width: 90vw !important;
+    max-height: 85vh !important;
+  }
+}
+
+@media (max-width: 768px) {
+  [role="dialog"] {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 1rem;
+  }
+}
+
+/* TabsContent responsive height for editors */
+[data-state="active"] .monaco-editor {
+  min-height: 300px !important;
+}
+
+/* Ensure proper scrolling in diff viewer containers */
+.diff-viewer-container {
+  overflow: auto !important;
+}
+
+/* Fix ReactDiffViewer responsive issues */
+.react-diff-viewer {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+.react-diff-viewer table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.react-diff-viewer pre {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-x: auto !important;
+}
+
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
