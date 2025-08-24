@@ -219,7 +219,7 @@ const App = () => {
     <div className="App">
       <Router>
         <AuthProvider>
-          {/* <PerformanceProvider> Temporarily disabled to fix infinite loop */}
+          {/* Performance monitoring completely removed */}
             <WebSocketProvider>
               <Routes>
                 <Route path="/login" element={<Login />} />
