@@ -81,7 +81,7 @@ const Dashboard = memo(() => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [optimizedApiCall]);
+  }, [simpleApiCall]);
 
   // Debounced refresh function to avoid excessive API calls
   const debouncedRefresh = useCallback(
