@@ -95,11 +95,11 @@ const Dashboard = memo(() => {
         () => axios.patch(`/deployments/${namespace}/${name}/scale`, { replicas })
       );
       toast.success(`Successfully scaled ${name} to ${replicas} replicas`);
-      debouncedRefresh();
+      handleConfigurationUpdated();
     } catch (error) {
       toast.error(`Failed to scale deployment: ${error.response?.data?.detail || error.message}`);
     }
-  }, [simpleApiCall, debouncedRefresh]);
+  }, [simpleApiCall, handleConfigurationUpdated]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
