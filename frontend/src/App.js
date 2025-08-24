@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Register from './components/Register';
 import { Toaster } from './components/ui/sonner';
+import useWebSocket from './hooks/useWebSocket';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const WS_URL = `${BACKEND_URL.replace('http', 'ws')}/ws`;
 
 // Configure axios defaults
 axios.defaults.baseURL = API;
