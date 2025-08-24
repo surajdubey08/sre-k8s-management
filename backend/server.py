@@ -498,6 +498,183 @@ class KubernetesService:
         except ApiException as e:
             logger.error(f"Failed to list daemonsets: {e}")
             raise HTTPException(status_code=e.status, detail=f"Kubernetes API error: {e.reason}")
+    
+    async def get_deployment_config(self, namespace: str, name: str):
+        """Get complete deployment configuration for editing"""
+        if not self.available:
+            return {}
+        
+        try:
+            deployment = self.apps_v1.read_namespaced_deployment(name=name, namespace=namespace)
+            # Convert to dict and remove read-only fields
+            config = deployment.to_dict()
+            
+            # Remove read-only fields that shouldn't be edited
+            if 'status' in config:
+                del config['status']
+            if 'metadata' in config:
+                metadata = config['metadata']
+                # Keep only editable metadata fields
+                editable_metadata = {
+                    'name': metadata.get('name'),
+                    'namespace': metadata.get('namespace'),
+                    'labels': metadata.get('labels', {}),
+                    'annotations': metadata.get('annotations', {})
+                }
+                config['metadata'] = editable_metadata
+            
+            return config
+        except ApiException as e:
+            if e.status == 404:
+                raise HTTPException(status_code=404, detail=f"Deployment '{name}' not found in namespace '{namespace}'")
+            raise HTTPException(status_code=e.status, detail=f"Kubernetes API error: {e.reason}")
+    
+    async def update_deployment_config(self, namespace: str, name: str, config: Dict[str, Any], user: str):
+        """Update deployment configuration"""
+        if not self.available:
+            # Mock implementation for non-k8s environments
+            return ConfigurationUpdate(
+                success=True,
+                message=f"Successfully updated configuration for deployment '{name}' (mock mode)",
+                applied_changes={"mock": True},
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user=user
+            )
+        
+        try:
+            # Get current deployment
+            current_deployment = self.apps_v1.read_namespaced_deployment(name=name, namespace=namespace)
+            
+            # Apply updates to the deployment
+            if 'spec' in config:
+                if 'replicas' in config['spec']:
+                    current_deployment.spec.replicas = config['spec']['replicas']
+                if 'template' in config['spec'] and 'spec' in config['spec']['template']:
+                    template_spec = config['spec']['template']['spec']
+                    if 'containers' in template_spec:
+                        for i, container_config in enumerate(template_spec['containers']):
+                            if i < len(current_deployment.spec.template.spec.containers):
+                                container = current_deployment.spec.template.spec.containers[i]
+                                if 'image' in container_config:
+                                    container.image = container_config['image']
+                                if 'env' in container_config:
+                                    container.env = [
+                                        client.V1EnvVar(name=env['name'], value=env['value'])
+                                        for env in container_config['env']
+                                    ]
+            
+            if 'metadata' in config:
+                if 'labels' in config['metadata']:
+                    current_deployment.metadata.labels = config['metadata']['labels']
+                if 'annotations' in config['metadata']:
+                    current_deployment.metadata.annotations = config['metadata']['annotations']
+            
+            # Apply the update
+            updated_deployment = self.apps_v1.patch_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                body=current_deployment
+            )
+            
+            return ConfigurationUpdate(
+                success=True,
+                message=f"Successfully updated configuration for deployment '{name}'",
+                applied_changes=config,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user=user
+            )
+            
+        except ApiException as e:
+            if e.status == 404:
+                raise HTTPException(status_code=404, detail=f"Deployment '{name}' not found in namespace '{namespace}'")
+            raise HTTPException(status_code=e.status, detail=f"Kubernetes API error: {e.reason}")
+    
+    async def get_daemonset_config(self, namespace: str, name: str):
+        """Get complete daemonset configuration for editing"""
+        if not self.available:
+            return {}
+        
+        try:
+            daemonset = self.apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
+            # Convert to dict and remove read-only fields
+            config = daemonset.to_dict()
+            
+            # Remove read-only fields that shouldn't be edited
+            if 'status' in config:
+                del config['status']
+            if 'metadata' in config:
+                metadata = config['metadata']
+                # Keep only editable metadata fields
+                editable_metadata = {
+                    'name': metadata.get('name'),
+                    'namespace': metadata.get('namespace'),
+                    'labels': metadata.get('labels', {}),
+                    'annotations': metadata.get('annotations', {})
+                }
+                config['metadata'] = editable_metadata
+            
+            return config
+        except ApiException as e:
+            if e.status == 404:
+                raise HTTPException(status_code=404, detail=f"DaemonSet '{name}' not found in namespace '{namespace}'")
+            raise HTTPException(status_code=e.status, detail=f"Kubernetes API error: {e.reason}")
+    
+    async def update_daemonset_config(self, namespace: str, name: str, config: Dict[str, Any], user: str):
+        """Update daemonset configuration"""
+        if not self.available:
+            # Mock implementation for non-k8s environments
+            return ConfigurationUpdate(
+                success=True,
+                message=f"Successfully updated configuration for daemonset '{name}' (mock mode)",
+                applied_changes={"mock": True},
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user=user
+            )
+        
+        try:
+            # Get current daemonset
+            current_daemonset = self.apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
+            
+            # Apply updates to the daemonset
+            if 'spec' in config and 'template' in config['spec'] and 'spec' in config['spec']['template']:
+                template_spec = config['spec']['template']['spec']
+                if 'containers' in template_spec:
+                    for i, container_config in enumerate(template_spec['containers']):
+                        if i < len(current_daemonset.spec.template.spec.containers):
+                            container = current_daemonset.spec.template.spec.containers[i]
+                            if 'image' in container_config:
+                                container.image = container_config['image']
+                            if 'env' in container_config:
+                                container.env = [
+                                    client.V1EnvVar(name=env['name'], value=env['value'])
+                                    for env in container_config['env']
+                                ]
+            
+            if 'metadata' in config:
+                if 'labels' in config['metadata']:
+                    current_daemonset.metadata.labels = config['metadata']['labels']
+                if 'annotations' in config['metadata']:
+                    current_daemonset.metadata.annotations = config['metadata']['annotations']
+            
+            # Apply the update
+            updated_daemonset = self.apps_v1.patch_namespaced_daemon_set(
+                name=name,
+                namespace=namespace,
+                body=current_daemonset
+            )
+            
+            return ConfigurationUpdate(
+                success=True,
+                message=f"Successfully updated configuration for daemonset '{name}'",
+                applied_changes=config,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user=user
+            )
+            
+        except ApiException as e:
+            if e.status == 404:
+                raise HTTPException(status_code=404, detail=f"DaemonSet '{name}' not found in namespace '{namespace}'")
+            raise HTTPException(status_code=e.status, detail=f"Kubernetes API error: {e.reason}")
 
 # Global service instance
 k8s_service = None
