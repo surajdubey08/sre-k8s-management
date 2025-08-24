@@ -497,10 +497,17 @@ const Dashboard = memo(() => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-6 mt-6">
+            <PerformanceDashboard />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
   );
-};
+});
+
+Dashboard.displayName = 'Dashboard';
 
 export default Dashboard;
