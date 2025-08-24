@@ -133,6 +133,46 @@ const WebSocketProvider = ({ children }) => {
     lastMessage: null
   });
 
+  // Memoize callback functions to prevent infinite loop
+  const handleMessage = useCallback((message) => {
+    console.log('Real-time update:', message);
+    
+    // Add to real-time updates
+    setRealTimeUpdates(prev => [message, ...prev.slice(0, 49)]);
+    
+    // Update connection stats
+    setConnectionStats(prev => ({
+      ...prev,
+      lastMessage: message,
+      connected: true
+    }));
+  }, []);
+
+  const handleOpen = useCallback(() => {
+    console.log('WebSocket connected');
+    setConnectionStats(prev => ({
+      ...prev,
+      connected: true,
+      connectionCount: prev.connectionCount + 1
+    }));
+  }, []);
+
+  const handleClose = useCallback(() => {
+    console.log('WebSocket disconnected');
+    setConnectionStats(prev => ({
+      ...prev,
+      connected: false
+    }));
+  }, []);
+
+  const handleError = useCallback((error) => {
+    console.error('WebSocket error:', error);
+    setConnectionStats(prev => ({
+      ...prev,
+      connected: false
+    }));
+  }, []);
+
   // WebSocket connection with authentication check
   const {
     connectionState,
@@ -144,40 +184,10 @@ const WebSocketProvider = ({ children }) => {
   } = useWebSocket(WS_URL, {
     autoConnect: !!user,
     showNotifications: true,
-    onMessage: (message) => {
-      console.log('Real-time update:', message);
-      
-      // Add to real-time updates
-      setRealTimeUpdates(prev => [message, ...prev.slice(0, 49)]);
-      
-      // Update connection stats
-      setConnectionStats(prev => ({
-        ...prev,
-        lastMessage: message,
-        connected: true
-      }));
-    },
-    onOpen: () => {
-      console.log('WebSocket connected');
-      setConnectionStats(prev => ({
-        ...prev,
-        connected: true,
-        connectionCount: prev.connectionCount + 1
-      }));
-    },
-    onClose: () => {
-      console.log('WebSocket disconnected');
-      setConnectionStats(prev => ({
-        ...prev,
-        connected: false
-      }));
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
-      setConnectionStats(prev => ({
-        ...prev,
-        connected: false
-      }));
+    onMessage: handleMessage,
+    onOpen: handleOpen,
+    onClose: handleClose,
+    onError: handleError
     }
   });
 
